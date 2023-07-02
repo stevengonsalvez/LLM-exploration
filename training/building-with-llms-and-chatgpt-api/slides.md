@@ -30,7 +30,7 @@ Not another Brown bag
   <button @click="$slidev.nav.openInEditor()" title="Open in Editor" class="text-xl slidev-icon-btn opacity-50 !border-none !hover:text-white">
     <carbon:edit />
   </button>
-  <a href="https://github.com/slidevjs/slidev" target="_blank" alt="GitHub"
+  <a href="https://github.com/stevengonsalvez/LLM-dojo" target="_blank" alt="GitHub"
     class="text-xl slidev-icon-btn opacity-50 !border-none !hover:text-white">
     <carbon-logo-github />
   </a>
@@ -41,7 +41,8 @@ The last comment block of each slide will be treated as slide notes. It will be 
 -->
 
 ---
-
+layout: new-section
+---
 # Agenda
 
 <div class="font-mono grid grid-cols-3 gap-4">
@@ -309,11 +310,6 @@ For instance, in a customer service assistant
 
 the delimiter: Is just a  way to separate different parts of an instruction or output. Helps the model determine different sections. 4 hashtags is a nice delimiter as it is a single token
 -->
-
----
-title: "Lab 1: MQTT Input and Output Binding"
-level: 2
-layout: two-cols
 ---
 
 # Building Systems with an LLM: Moderation
@@ -326,485 +322,60 @@ layout: two-cols
 - Will explore this using OpenAI's [LLM moderation API](https://platform.openai.com/docs/guides/moderation/overview). 
 - Will explore protecting against prompt injection
 
-::right::
+---
+title: "Moderation and Prompt Injection"
+level: 2
+layout: two-cols
+---
 
-<br/>
 
 <span style="color:green" class="text-2xl">Moderation API</span>
 
+<div v-click>
+
 - standard set of usage policies on the content by OPEN AI
 - tools that can take identify and filter content that violate
-- Free to use. Lets explore an example
+- customisations based on classification rankings
+- Free to use. 
+- Lets explore an example
 
-<br/><br/>
+</div>
+
+::right::
+
+<span style="color:green" class="text-2xl">Prompt Injection</span>
+
+
+<div v-click>
+
+- User trying to bypass intended instructions, constraints set by the developer
+- e.g: Trying to use a customer service bot to generate blog posts
+  
+>strategies
+
+- delimiters and clear instructions in the system message
+- using additional user prompt instructions to validate intention
+
+- exploration
+
+</div>
+---
+
+# Chain of Thought Reasoning
+
+> * models could rush to results with inaccurate reasoning. So we reframe the query to request steps of reasoning before the model provides the output
+
+<br/>
+
+> * Sometimes it is not appropriate to show the user the reasoning steps (e.g: tutoring apps).
+>   * Inner monologue is the tactic used to mitigate disclosure
 
 
 ---
 
 # SPLIT section
 
-
----
-title: "Lab 1: MQTT Input and Output Binding"
-level: 2
-layout: two-cols
----
-
-```yaml {all|9-10|11-13|17-19|20-26}
-apiVersion: core.openfunction.io/v1beta1
-kind: Function
-metadata:
-  name: sample-node-async-bindings
-spec:
-  version: v2.0.0
-  image: '<image-repo>/<image-name>:<tag>'
-  serving:
-    # default to knative
-    runtime: async
-    annotations:
-      # default to "grpc"
-      dapr.io/app-protocol: http
-    template:
-      containers:
-        - name: function
-    params:
-      # default to FUNC_NAME value
-      FUNCTION_TARGET: tryAsync
-    inputs:
-      - name: mqtt-input
-        component: mqtt-in
-    outputs:
-      - name: mqtt-output
-        component: mqtt-out
-        operation: create
-```
-
-::right::
-
-<v-click>
-
-```yaml
-    bindings:
-      mqtt-in:
-        type: bindings.mqtt
-        version: v1
-        metadata:
-          - name: consumerID
-            value: '{uuid}'
-          - name: url
-            value: tcp://admin:public@emqx:1883
-          - name: topic
-            value: in
-      mqtt-out:
-        type: bindings.mqtt
-        version: v1
-        metadata:
-          - name: consumerID
-            value: '{uuid}'
-          - name: url
-            value: tcp://admin:public@emqx:1883
-          - name: topic
-            value: out
-```
-
 > * Dapr Component - Bindings - [MQTT](https://docs.dapr.io/reference/components-reference/supported-bindings/mqtt/)
-> * OpenFunction - Function CRD - [DaprIO](https://openfunction.dev/docs/reference/component-reference/function-spec/#daprio)
-> * Check full [sample](https://github.com/OpenFunction/samples/tree/main/functions/async/mqtt-io-node) codes
 
-</v-click>
-
-<style>
-.slidev-code {
-  @apply !rounded-none;
-}
-</style>
 
 ---
-layout: figure
-figureCaption: Delimitation Containers in Development and Production
-figureFootnoteNumber: 1
-figureUrl: https://containers.dev/img/dev-container-stages.png
-
----
-
-<Footnotes separator>
-  <Footnote number=1><a href="https://containers.dev/img/dev-container-stages.png" rel="noopener noreferrer">Microsoft</a></Footnote>
-</Footnotes>
-
----
-
-# Motivation
-
-Dev Containers facilitate
-
-<ul class="ml-6">
-  <li>documentation</li>
-  <li>setup</li>
-  <li>sharing</li>
-  <li>compatibility</li>
-  <li>encapsulation</li>
-  <li>prototyping</li>
-  <li>device independency</li>
-  <li>Continuous Integration</li>
-</ul>
-
----
-
-layout: center
-class: text-center
-
----
-
-# Prerequisites
-
-[Docker](https://www.docker.com/) · [VS Code](https://code.visualstudio.com/) · [Dev Containers Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-
----
-
-# Simple Dev Container
-
-[.devcontainer.json or .devcontainer/devcontainer.json](https://containers.dev/implementors/json_reference/)
-
-```json {2|3|4-14|15|16}
-{
-  "name": "dev-environment-as-code",
-  "image": "node",
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "antfu.slidev",
-        "editorconfig.editorconfig",
-      ],
-      "settings": {
-        "editor.formatOnSave": true
-      }
-    }
-  },
-  "forwardPorts": [3030],
-  "postStartCommand": "npm install && npm run dev",
-}
-```
-
----
-
-layout: figure
-figureCaption: Open with Dev Containers Extension
-figureUrl: /command-palette.png
-
----
-
----
-
-# Advanced Dev Container
-
-Image customization
-
-```json
-{
-  "build": {
-    "dockerfile": "Dockerfile",
-  },
-}
-```
-
-Container orchestration
-
-```json
-{
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "server",
-  "workspaceFolder": "/usr/src/server"
-}
-```
-
-<div class="mt-6">
-  <p>
-    <mdi-arrow-right /> <a href="https://github.com/alexanderdavide/dev-environment-as-code/tree/master/app" rel="noopener noreferrer">Example</a>
-    with server, database and VS Code customization
-  </p>
-</div>
-
----
-
-# Disadvantages and Limitations
-
-Dev Containers
-
-<ul class="ml-6">
-  <li>might have lower performance</li>
-  <li>consume a lot of storage for images</li>
-  <li>utilize a lot of network bandwith to load images</li>
-  <li>might cause projects to loose Host OS compatibility</li>
-  <li>might be technically impractical or impossible for certain projects</li>
-</ul>
-
----
-
-# Outlook
-
-<ul>
-  <li><a href="https://github.com/codespaces" rel="noopener noreferrer">GitHub Codespaces</a></li>
-  <li><a href="https://github.com/recode-sh/cli" rel="noopener noreferrer">recode</a></li>
-  <li><a href="https://www.gitpod.io/" rel="noopener noreferrer">GitPod</a>, <a href="https://stackblitz.com/" rel="noopener noreferrer">StackBlitz</a> etc.</li>
-  <li><a href="https://devenv.sh/" rel="noopener noreferrer">devenv</a></li>
-</ul>
----
-theme: academic
-class: text-white
-colorSchema: dark
-coverAuthor: Alexander Eble
-coverAuthorUrl: https://alexeble.de
-coverBackgroundUrl: https://images.unsplash.com/photo-1607799279861-4dd421887fb3
-coverBackgroundSource: unsplash
-coverBackgroundSourceUrl: https://unsplash.com/photos/8qEB0fTe9Vw
-coverDate: 12/01/2022
-exportFilename: dev-environment-as-code
-favicon: https://alexeble.mo.cloudinary.net/logo.png
-fonts:
-  local: Monserrat, Roboto Mono
-hideInToc: true
-info: |
-  Engineer with LLMS
-lineNumbers: true
-titleTemplate: '%s • Alexander Eble'
----
-
-# Engineer with LLMs - Part 1
-
-Not another Brown bag
-
-<div class="pt-12">
-  <span @click="$slidev.nav.next" class="px-2 py-1 rounded cursor-pointer" hover="bg-white bg-opacity-10">
-    Press Space for next page <carbon:arrow-right class="inline"/>
-  </span>
-</div>
-
-<div class="abs-br m-6 flex gap-2">
-  <button @click="$slidev.nav.openInEditor()" title="Open in Editor" class="text-xl slidev-icon-btn opacity-50 !border-none !hover:text-white">
-    <carbon:edit />
-  </button>
-  <a href="https://github.com/slidevjs/slidev" target="_blank" alt="GitHub"
-    class="text-xl slidev-icon-btn opacity-50 !border-none !hover:text-white">
-    <carbon-logo-github />
-  </a>
-</div>
-
-<!--
-The last comment block of each slide will be treated as slide notes. It will be visible and editable in Presenter Mode along with the slide. [Read more in the docs](https://sli.dev/guide/syntax.html#notes)
--->
-
----
-
-# Agenda
-
-<div class="font-mono grid grid-cols-3 gap-4">
-  <div class="bg-gray-500/50 px-3 py-2 rounded w-full" v-click>
-    <h4>Part 1</h4>
-    <p class="text-center">How LLMs work, how they are trained</p>
-    <p class="text-center">Language Models, Chatformat, tokens</p>
-    <p class="text-center">Classification</p>
-    <p class="text-center">Moderation</p>
-    <p class="text-center">Chain of thought reasoning</p>
-  </div>
-  <div class="bg-gray-500/50 px-3 py-2 rounded w-full" v-click>
-    <h4>Part 2</h4>
-    <div class="bg-gray-500/50 mb-2 mt-4 p-2 rounded w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-  </div>
-  <div class="bg-gray-500/50 px-3 py-2 rounded w-full" v-click>
-    <h4>Part 3</h4>
-    <div class="bg-gray-500/50 mb-2 mt-4 p-2 rounded w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-  </div>
-</div>
-
----
-
-# How does LLM work
-
-> You are probably familiar with the text generation process, likely completions given a prompt
-
-<div class="mt-8">
-  <ul>
-    <li v-click><q>I love eating</q></li>
-    <li v-click><q>full-featured</q></li>
-    <li v-click><q>specification</q></li>
-    <li v-click><q>enrich existing formats</q></li>
-    <li v-click><q>as coding environments or for continuous integration and testing</q></li>
-  </ul>
-</div>
-
-<Footnotes separator>
-  <Footnote number=1><a href="https://containers.dev/" rel="noopener noreferrer">Microsoft</a></Footnote>
-</Footnotes>
-
----
-
-# How does LLM work
-
-> A Development Container (or Dev Container for short) allows you to use a container as a full-featured development environment. The Development Containers Specification seeks to find ways to enrich existing formats with common development specific settings, tools, and configuration [..] so that they can be used as coding environments or for continuous integration and testing.<sup>1</sup>
-
-<div class="mt-8">
-  <ul>
-    <li v-click><q>container</q> <logos-docker-icon /></li>
-    <li v-click><q>full-featured</q></li>
-    <li v-click><q>specification</q></li>
-    <li v-click><q>enrich existing formats</q></li>
-    <li v-click><q>as coding environments or for continuous integration and testing</q></li>
-  </ul>
-</div>
-
-<Footnotes separator>
-  <Footnote number=1><a href="https://containers.dev/" rel="noopener noreferrer">Microsoft</a></Footnote>
-</Footnotes>
-
----
-
-layout: figure
-figureCaption: Delimitation Containers in Development and Production
-figureFootnoteNumber: 1
-figureUrl: https://containers.dev/img/dev-container-stages.png
-
----
-
-<Footnotes separator>
-  <Footnote number=1><a href="https://containers.dev/img/dev-container-stages.png" rel="noopener noreferrer">Microsoft</a></Footnote>
-</Footnotes>
-
----
-
-# Motivation
-
-Dev Containers facilitate
-
-<ul class="ml-6">
-  <li>documentation</li>
-  <li>setup</li>
-  <li>sharing</li>
-  <li>compatibility</li>
-  <li>encapsulation</li>
-  <li>prototyping</li>
-  <li>device independency</li>
-  <li>Continuous Integration</li>
-</ul>
-
----
-
-layout: center
-class: text-center
-
----
-
-# Prerequisites
-
-[Docker](https://www.docker.com/) · [VS Code](https://code.visualstudio.com/) · [Dev Containers Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-
----
-
-# Simple Dev Container
-
-[.devcontainer.json or .devcontainer/devcontainer.json](https://containers.dev/implementors/json_reference/)
-
-```json {2|3|4-14|15|16}
-{
-  "name": "dev-environment-as-code",
-  "image": "node",
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "antfu.slidev",
-        "editorconfig.editorconfig",
-      ],
-      "settings": {
-        "editor.formatOnSave": true
-      }
-    }
-  },
-  "forwardPorts": [3030],
-  "postStartCommand": "npm install && npm run dev",
-}
-```
-
----
-
-layout: figure
-figureCaption: Open with Dev Containers Extension
-figureUrl: /command-palette.png
-
----
-
----
-
-# Advanced Dev Container
-
-Image customization
-
-```json
-{
-  "build": {
-    "dockerfile": "Dockerfile",
-  },
-}
-```
-
-Container orchestration
-
-```json
-{
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "server",
-  "workspaceFolder": "/usr/src/server"
-}
-```
-
-<div class="mt-6">
-  <p>
-    <mdi-arrow-right /> <a href="https://github.com/alexanderdavide/dev-environment-as-code/tree/master/app" rel="noopener noreferrer">Example</a>
-    with server, database and VS Code customization
-  </p>
-</div>
-
----
-
-# Disadvantages and Limitations
-
-Dev Containers
-
-<ul class="ml-6">
-  <li>might have lower performance</li>
-  <li>consume a lot of storage for images</li>
-  <li>utilize a lot of network bandwith to load images</li>
-  <li>might cause projects to loose Host OS compatibility</li>
-  <li>might be technically impractical or impossible for certain projects</li>
-</ul>
-
----
-
-# Outlook
-
-<ul>
-  <li><a href="https://github.com/codespaces" rel="noopener noreferrer">GitHub Codespaces</a></li>
-  <li><a href="https://github.com/recode-sh/cli" rel="noopener noreferrer">recode</a></li>
-  <li><a href="https://www.gitpod.io/" rel="noopener noreferrer">GitPod</a>, <a href="https://stackblitz.com/" rel="noopener noreferrer">StackBlitz</a> etc.</li>
-  <li><a href="https://devenv.sh/" rel="noopener noreferrer">devenv</a></li>
-</ul>

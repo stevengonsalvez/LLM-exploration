@@ -8,9 +8,12 @@
   },
   "dependencies": {
     "@slidev/cli": "^0.42.5",
+    "@slidev/theme-bricks": "^0.0.2",
     "@slidev/theme-default": "latest",
     "@slidev/theme-seriph": "latest",
-    "slidev-theme-academic": "^1.1.3"
+    "slidev-theme-academic": "^1.1.3",
+    "slidev-theme-dracula": "^0.1.0",
+    "slidev-theme-penguin": "^1.7.1"
   },
   "devDependencies": {
     "@iconify-json/devicon": "^1.1.11",
