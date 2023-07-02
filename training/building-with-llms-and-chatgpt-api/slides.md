@@ -2,21 +2,18 @@
 theme: academic
 class: text-white
 colorSchema: dark
-coverAuthor: Alexander Eble
-coverAuthorUrl: https://alexeble.de
 coverBackgroundUrl: https://images.unsplash.com/photo-1607799279861-4dd421887fb3
 coverBackgroundSource: unsplash
 coverBackgroundSourceUrl: https://unsplash.com/photos/8qEB0fTe9Vw
 coverDate: 12/01/2022
-exportFilename: dev-environment-as-code
-favicon: https://alexeble.mo.cloudinary.net/logo.png
+exportFilename: Engineering with LLMs
 fonts:
   local: Monserrat, Roboto Mono
 hideInToc: true
 info: |
   Engineer with LLMS
 lineNumbers: true
-titleTemplate: '%s • Alexander Eble'
+titleTemplate: '%s • Digital Engineering'
 ---
 
 # Engineer with LLMs - Part 1
@@ -183,9 +180,246 @@ The last comment block of each slide will be treated as slide notes. It will be 
 The training of base LLMs could take months , but from a base LLM to a instruction tuned LLM could be just days with a moderate dataset and moderate compute
 -->
 
+---
+layout: center
+class: text-center
+---
+# <icomoon-free-lab class="opacity-70"/> [Get started with an LLM](https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-1.ipynb) <devicon-jupyter-wordmark/>
 
 ---
 
+# Tokens
+
+>Systemically, LLMs does not repeatedly predict the next word , they rather predict the next `token`. Tokens can be words, subwords, characters, symbols etc.
+
+- example: `learning to code is fun`
+<div v-click class="text-sm p-2">
+<span style="background-color:purple">Learning </span><span style="background-color:green">to </span><span style="background-color:red">code </span><span style="background-color:brown">is </span><span style="background-color:blue">fun</span>
+</div>
+
+- example: `Programming is the art of turning caffeine into code`
+<div v-click class="text-sm p-2">
+<span style="background-color:purple">Program</span><span style="background-color:green">ming </span><span style="background-color:red">is </span><span style="background-color:brown">the </span><span style="background-color:blue">art </span><span style="background-color:red">of </span><span style="background-color:orange">turning </span>
+<span style="background-color:purple">caffe</span><span style="background-color:blue">ine </span><span style="background-color:darkgrey">to </span><span style="background-color:violet">code</span>
+</div>
+
+- example: Take the word <span style="background-color:green">Gobbledygook</span> and reverse it
+<div v-click class="text-sm p-2">
+<span style="background-color:red">koogydebbolG</span> : This is Wrong!! - but why ?
+</div>
+
+<div v-click class="text-sm p-2">
+Token Split:  <span style="background-color:green">["G", "ob", "ble", "dy", "gook"]</span>
+</div>
+
+<div v-click class="text-sm p-2">
+- Tokens have limits: e.g: 4000 for chatgpt combined between the input (context) and output (completion)
+</div>
+
+<div v-click class="text-sm p-2">
+<span style="background-color:blue">TIP:</span><span style="color:violet"> next-time when using Chatgpt to cheat on Scrabble, keep this in mind for better outputs</span>
+</div>
+
+<!--Notes: 
+- Why tokens
+  - Not just English, need to be able to have text generation in multiple languages
+  - Different models have different limits on the number of tokens (e.g: Anthropic Claude has a 100K context)
+  - For English, roughly 1 token is 4 characters or 3/4 of a word (GPT model)
+  - The token limits are mainly due to computational constraints, speed, accuracy etc. Processing very long sequences can be memory-intensive and may lead to increased computational complexity
+-->
+
+---
+
+# 101s of prompting
+<div class="grid grid-cols-2 gap-x-8"><div>
+
+<br/>
+
+![image](https://github.com/stevengonsalvez/LLM-dojo/assets/9320602/f650353b-95e8-4cd7-98e6-00e0b457c03b)
+
+
+</div><div>
+
+
+<br/>
+
+```python {2-4|6-7|9-10} {lines:true}
+messages =  [  
+
+{'role':'system', 
+ 'content':"""You are an assistant ...."""},   
+
+{'role':'assistant', 
+ 'content':"""why is the earth round..."""},
+
+{'role':'user', 
+ 'content':"""tell me some trivia ..."""},  
+
+] 
+```
+
+<br>
+
+<div v-click>
+
+</div>
+
+</div></div>
+
+> for example, 
+
+---
+layout: center
+class: text-center
+---
+# <icomoon-free-lab class="opacity-70"/> [Example](https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-1.ipynb) <devicon-jupyter-wordmark/>
+
+---
+
+# Building systems with an LLM: Classification
+
+<br/>
+
+> Evaluating Inputs is essential for ensuring the quality and safety of the system
+
+<br/>
+
+- Classify the type of query
+- Then use the classification to determine which instructions to use\
+
+<br/>
+
+> How
+
+<br/>
+
+- categorisation
+- hard-coded instructions relevant to a category
+
+<br/>
+
+>example
+
+<!--Notes: 
+For instance, in a customer service assistant
+- important to first classify the type of user query (e.g: either product information or account information) a
+- and then determine the instructions to use based on the classification
+- we could use different secondary instruction if the user needs to close an account vs users asking about product information
+
+
+the delimiter: Is just a  way to separate different parts of an instruction or output. Helps the model determine different sections. 4 hashtags is a nice delimiter as it is a single token
+-->
+
+---
+title: "Lab 1: MQTT Input and Output Binding"
+level: 2
+layout: two-cols
+---
+
+# Building Systems with an LLM: Moderation
+
+> If users can input into a system, you would need to ensure the users are using the system responsibly and not trying to abuse it. 
+
+<br/>
+<br/>
+
+- Will explore this using OpenAI's [LLM moderation API](https://platform.openai.com/docs/guides/moderation/overview). 
+- Will explore protecting against prompt injection
+
+::right::
+
+<br/>
+
+<span style="color:green" class="text-2xl">Moderation API</span>
+
+- standard set of usage policies on the content by OPEN AI
+- tools that can take identify and filter content that violate
+- Free to use. Lets explore an example
+
+<br/><br/>
+
+
+---
+
+# SPLIT section
+
+
+---
+title: "Lab 1: MQTT Input and Output Binding"
+level: 2
+layout: two-cols
+---
+
+```yaml {all|9-10|11-13|17-19|20-26}
+apiVersion: core.openfunction.io/v1beta1
+kind: Function
+metadata:
+  name: sample-node-async-bindings
+spec:
+  version: v2.0.0
+  image: '<image-repo>/<image-name>:<tag>'
+  serving:
+    # default to knative
+    runtime: async
+    annotations:
+      # default to "grpc"
+      dapr.io/app-protocol: http
+    template:
+      containers:
+        - name: function
+    params:
+      # default to FUNC_NAME value
+      FUNCTION_TARGET: tryAsync
+    inputs:
+      - name: mqtt-input
+        component: mqtt-in
+    outputs:
+      - name: mqtt-output
+        component: mqtt-out
+        operation: create
+```
+
+::right::
+
+<v-click>
+
+```yaml
+    bindings:
+      mqtt-in:
+        type: bindings.mqtt
+        version: v1
+        metadata:
+          - name: consumerID
+            value: '{uuid}'
+          - name: url
+            value: tcp://admin:public@emqx:1883
+          - name: topic
+            value: in
+      mqtt-out:
+        type: bindings.mqtt
+        version: v1
+        metadata:
+          - name: consumerID
+            value: '{uuid}'
+          - name: url
+            value: tcp://admin:public@emqx:1883
+          - name: topic
+            value: out
+```
+
+> * Dapr Component - Bindings - [MQTT](https://docs.dapr.io/reference/components-reference/supported-bindings/mqtt/)
+> * OpenFunction - Function CRD - [DaprIO](https://openfunction.dev/docs/reference/component-reference/function-spec/#daprio)
+> * Check full [sample](https://github.com/OpenFunction/samples/tree/main/functions/async/mqtt-io-node) codes
+
+</v-click>
+
+<style>
+.slidev-code {
+  @apply !rounded-none;
+}
+</style>
+
+---
 layout: figure
 figureCaption: Delimitation Containers in Development and Production
 figureFootnoteNumber: 1

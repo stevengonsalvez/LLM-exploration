@@ -427,6 +427,27 @@
   dependencies:
     "@iconify/types" "*"
 
+"@iconify-json/devicon@^1.1.11":
+  version "1.1.11"
+  resolved "https://registry.yarnpkg.com/@iconify-json/devicon/-/devicon-1.1.11.tgz#d6e8bd3a5b45e5be33a934c2472deceb2de3ee64"
+  integrity sha512-sANBgzknZFHm9aasT7h3KkGUkVVAPKbevoii1S59youS/UWTzFtiWU9Fxmz2nE3yBu4LI7yB4jynUd+fNSxnJg==
+  dependencies:
+    "@iconify/types" "*"
+
+"@iconify-json/ic@^1.1.13":
+  version "1.1.13"
+  resolved "https://registry.yarnpkg.com/@iconify-json/ic/-/ic-1.1.13.tgz#f5405e6ec65c1ac5b85e2d1ea1adde9093b199bd"
+  integrity sha512-5i5zal/VRwTrs99iMTnG1Zu97bgX9Mkiu9TzR1U1rHBylUnBW+HkOweoQVEPgQITGG024/lNbZxU+3Aa2xuDww==
+  dependencies:
+    "@iconify/types" "*"
+
+"@iconify-json/icomoon-free@^1.1.4":
+  version "1.1.4"
+  resolved "https://registry.yarnpkg.com/@iconify-json/icomoon-free/-/icomoon-free-1.1.4.tgz#ae1ce47b919b13cde3bc6b6391f8d744184e10bb"
+  integrity sha512-HrUpi+0lwTS+jkbjFwLOeO/u2BuF3zWbS/AUOJEGbcXdhkX7uBRWa/V8IF9cFVhmd72mpp6Nk2Ic1h+R/cBpww==
+  dependencies:
+    "@iconify/types" "*"
+
 "@iconify-json/logos@^1.1.33":
   version "1.1.33"
   resolved "https://registry.yarnpkg.com/@iconify-json/logos/-/logos-1.1.33.tgz#362c386c09aef04726abb3e7bf5c1a74880cf556"
