@@ -37,50 +37,43 @@ Not another Brown bag
 </div>
 
 <!--
-The last comment block of each slide will be treated as slide notes. It will be visible and editable in Presenter Mode along with the slide. [Read more in the docs](https://sli.dev/guide/syntax.html#notes)
+
 -->
 
 ---
-layout: new-section
+layout: image
+image: https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80
 ---
+
 # Agenda
 
-<div class="font-mono grid grid-cols-3 gap-4">
-  <div class="bg-gray-500/50 px-3 py-2 rounded w-full" v-click>
+<div class="font-mono grid grid-cols-4 gap-3 text-sm">
+  <div class="bg-green-500/50 px-3 py-2 rounded w-full" v-click>
     <h4>Part 1</h4>
-    <p class="text-center">How LLMs work, how they are trained</p>
-    <p class="text-center">Language Models, Chatformat, tokens</p>
-    <p class="text-center">Classification</p>
-    <p class="text-center">Moderation</p>
-    <p class="text-center">Chain of thought reasoning</p>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">How LLMs work, models, format, tokens</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"><p class="text-center">Classification, moderation</p></div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"><p class="text-center">Chain of thought, prompting chains</p></div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"><p class="text-center">Output Validations</p></div>
   </div>
   <div class="bg-gray-500/50 px-3 py-2 rounded w-full" v-click>
     <h4>Part 2</h4>
-    <div class="bg-gray-500/50 mb-2 mt-4 p-2 rounded w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Prompt Engineering deepdive</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Evaluation and Testing</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Prompt techniques explore</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">N-shot, retrieval-augmentation, Generated knowledge prompt, tree-of-thought </div>  
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">ethical prompt hacking</div>  
   </div>
   <div class="bg-gray-500/50 px-3 py-2 rounded w-full" v-click>
     <h4>Part 3</h4>
-    <div class="bg-gray-500/50 mb-2 mt-4 p-2 rounded w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
-    <div class="bg-gray-500/50 mb-2 mt-4 rounded p-2 w-50"></div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Langchain framework exploration</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Autonomous AGIs, AutoGPT, gpt-engineer, smol</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Different models, LLAMA, PALM2, Anthropic</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Platforms for AI apps</div>
+  </div>
+  <div class="bg-gray-500/50 px-3 py-2 rounded w-full" v-click>
+    <h4>Part 4</h4>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">How Diffusion models work</div>
+    <div class="bg-gray-500/50 mb-2 rounded p-2 w-full">Training models with your data</div>
     <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
     <div class="bg-gray-500/50 mb-2 rounded p-2 w-full"></div>
   </div>
@@ -267,13 +260,11 @@ messages =  [
 
 </div></div>
 
-> for example, 
-
 ---
 layout: center
 class: text-center
 ---
-# <icomoon-free-lab class="opacity-70"/> [Example](https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-1.ipynb) <devicon-jupyter-wordmark/>
+# <icomoon-free-lab class="opacity-70"/> [prompting example](https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-1.ipynb) <devicon-jupyter-wordmark/>
 
 ---
 
@@ -368,14 +359,135 @@ layout: two-cols
 <br/>
 
 > * Sometimes it is not appropriate to show the user the reasoning steps (e.g: tutoring apps).
->   * Inner monologue is the tactic used to mitigate disclosure
+>   * <span style="background-color:purple">Inner monologue</span> is the tactic used to mitigate disclosure
 
+<br/><br/>
+<span style="color:green" class="text-2xl">Explore</span>
+
+<Footnotes separator>
+  <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
+</Footnotes>
+--- 
+
+# Chaining Prompts - 1
+> * Split complex tasks into a series of simpler subtasks by chaining multiple prompts together. 
+
+<div class="grid grid-cols-2 gap-x-8"><div>
+<div v-click>
+<br/>
+<span style="background-color:red" class="text-sm">- But why can't we just use one prompt and chain of thought?</span><br/> <br/>
+
+- More Focused : efficient management and reduce probability of errors
+- chaining prompts is powerful when you have complex workflows to maintain the state of the system at any given point and take different actions depending on the state
+  - *Maybe over complicated for something very simple*
+
+
+</div></div>
+<div>
+<br/><br/>
+<div v-click>
+<span style="background-color:green">lets explore with the customer assistant setup</span>
+
+
+<br/>
+<img src="https://github.com/stevengonsalvez/LLM-dojo/assets/9320602/bb532ea8-666a-40d4-a552-b2d508f61710" alt="Italian Trulli">
+</div>
+</div></div>
+
+
+<!--Notes: 
+We can use the analogy of cooking a complex meal
+- managing multiple ingredients, stages , cooking techniques and timings all simultaneously - will be hard to ensure it is cooked properly
+- instead of like a recipe, where the focus is on one aspect at a time, focus each part is cooked correctly before moving onto the next
+
+If you take the customer assistant setup we discussed in the previous section, with chaining prompts, you could keep storing the state of where the incoming customer query is classified into, and based on the classification state you could do something different
+e.g: in technical support and proceed with relevant instructions from there
+
+- Each subtask only contain instructions required for a single state of the task, which makes 
+  - the system easier to manage, 
+  - makes sure the model has all information it needs to carry out the task
+  - and reduces the likelihood of errors
+
+-->
 
 ---
+
+# Chaining Prompts - 2
+
+
+<br/>
+
+- Reduce costs by Reducing number of tokens used (longer prompts has higher token cost)
+- Skip parts of workflow when not needed for a task
+- Easier to test (identification of steps that fail more often)
+- Ability to include human-in-the-loop
+- Allows model to use external tools at certain points in the workflow <span style="color:grey" class="text-sm">(e.g: looking up product catalogue or looking up a calendar) </span>
+
+<br/>
+<div v-click>
+<span style="background-color:green">What makes a problem complex? </span>
+
+A problem is complex if
+- there are many different instructions which could apply to any given situation
+- cases where it is complex for the model to reason about the next step
+</div>
+
+<Footnotes separator>
+  <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
+</Footnotes>
+
+---
+
+# Output Validation
+
+> To ensure the quality and relevance of the responses, need to validate the output
+
+- Using moderation API on the output
+- Using additional prompt steps for validation of the output
+
+
+<!--Notes: 
+-->
+
+<Footnotes separator>
+  <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
+</Footnotes>
+
+---
+layout: image
+image: https://images.unsplash.com/photo-1468657988500-aca2be09f4c6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80
+---
+
+# Summary <uim-rocket class="text-sm text-red-400 mx-2" /><uim-rocket class="text-xl text-orange-400 animate-ping" />
+
+- <span style="background-color:green">Process inputs</span>
+  - Classify and Moderate
+
+- <span style="background-color:blue">System Instructions</span>
+  - Chain of thought
+  - Prompt chaining
+  - (other techniques to explore) (n-shot prompting, Generated knowledge prompting, least-to-most prompting )
+
+- <span style="background-color:red">Output Validation</span>
+  - moderation
+  - prompting steps for self validation
+
+---
+
+# Additional notes
+<br/>
+
+- Use delimiters like triple backticks (```), angle brackets (<>), or tags (<tag> </tag>) to indicate distinct parts of the input, making it cleaner for debugging and avoiding prompt injection.
+- Ask for structured output (i.e. JSON format), this is useful for using the model output for another step.
+- Specify the intended tone of the text to get the tonality, format, and length of model output that you need. For example, you can instruct the model to formalize the language, generate not more than 50 words, etc.
+- Modify the model’s temperature parameter to play around the model’s degree of randomness. The higher the temperature, the model’s output would be random than accurate, and even hallucinate.
+
+
+--- 
 
 # SPLIT section
 
 > * Dapr Component - Bindings - [MQTT](https://docs.dapr.io/reference/components-reference/supported-bindings/mqtt/)
 
 
----
+-
