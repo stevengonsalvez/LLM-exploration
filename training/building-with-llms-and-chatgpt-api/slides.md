@@ -96,26 +96,36 @@ image: https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?ixlib=rb-4.0
 - homemade chocolate chip cookies straight from the oven
 </div>
 
-
+<!--Notes: 
+How did the model learn to do this -> next slide
+-->
 ---
 
 # How does LLM work - 2
 
+> <span style="background-color:green">what is?</span>   
 > Supervised Learning ( A -> B). A computer learns an input -> output mapping using labelled data.
 
 <br/>
 
 <div v-click>
 
-<p class="text-sm"  style="color:green"> > example of labelled data for sentiments</p>
+<p class="text-sm"  style="color:green"> > example of labelled data for building a model to classify sentiments</p>
 
 | Input                    | output   |
 | ------------------------ | -------- |
-| The pizza was delicious  | positive |
+| The pancake was delicious  | positive |
 | The service was poor     | negative |
 | The ambience was awesome | positive |
 
 </div>
+
+<!--Notes: 
+- The main tools to train LLM is supervised learning
+- In supervised learning, a computer learns an input-output mapping using some labelled data 
+- (e.g: as on screen) if we are using some data to classify restaurant reviews 
+-->
+
 
 ---
 
@@ -124,7 +134,7 @@ image: https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?ixlib=rb-4.0
 
 > LLMs are built using supervised learning to repeatedly predict the next word. 
 
-<p class="text-sm"  style="color:green">"My favorite hobby is"</p>
+<span style="background-color:grey">e.g: taking some labelled training data</span> <p class="text-sm"  style="color:green">"My favorite hobby is playing the guitar and creating music"</p>
 <div v-click class="text-sm p-4">
 
 | Input                                       | output         |
@@ -135,6 +145,11 @@ image: https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?ixlib=rb-4.0
 | My favorite hobby is playing the guitar and | creating music | 
 </div>
 
+<!--Notes: 
+- This sentence is turned into a sequence of training examples, where given sentence fragments - it predicts the next word from the sentence fragments
+- given the large training set of 100s of billions, a massive training set is created to train the model to learn to predict what the next word/fragment is
+-->
+
 ---
 
 # Types of LLMS
@@ -142,20 +157,29 @@ image: https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?ixlib=rb-4.0
 > - Base LLM
 > - Instruction tuned LLMs
 
-<br/>
+<div v-click>
 
-- Base LLM
-  - Predicts next word based on training data
+- <span style="background-color:green">Base LLM</span>
+  - Repeatedly predicts next word based on training data
 
 >e.g. Once there was a Goat named Oliver<p class="text-xs"  style="color:green">whose mischievous antics brought laughter and joy to everyone who crossed paths with him</p>
-
-- what about a completion for a quiz
->e.g. what is the capital of the united kingdom?<p class="text-xs"  style="color:green">what is the united kingdoms population? <br/> what is the currency of the united kingdom ?</p>
-
-<div v-click>
-- Instruction tuned LLM: `will hopefully return the capital of the United Kingdom is London`
 </div>
 
+<div v-click>
+- what about a completion for a quiz
+  
+>e.g. What is the capital of the united kingdom? <p class="text-xs"  style="color:green">What is the population of the united kingdom?<br/>what is the currency of the united kingdom ?</p>
+
+</div>
+
+
+
+
+
+<div v-click>
+
+- Instruction tuned LLM: `will hopefully return the capital of the United Kingdom is London`
+</div>
 ---
 
 
