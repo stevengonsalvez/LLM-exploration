@@ -284,6 +284,22 @@ messages =  [
 
 </div></div>
 
+<Footnotes separator>
+  <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-1.ipynb" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
+</Footnotes>
+
+<!--
+Notes: 
+Need to continue with the la
+
+temperature: A temperature of 0 means the responses will be very straightforward, almost deterministic (meaning you almost always get the same response to a given prompt)
+A temperature of 1 means the responses can vary wildly.
+
+
+For transformation tasks (extraction, standardization, format conversion, grammar fixes) prefer a temperature of 0 or up to 0.3.
+For writing tasks, you should juice the temperature higher, closer to 0.5. If you want GPT to be highly creative (for marketing or advertising copy for instance), consider values between 0.7 and 1.
+-->
+
 ---
 layout: center
 class: text-center
@@ -391,7 +407,7 @@ layout: two-cols
 <Footnotes separator>
   <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
 </Footnotes>
---- 
+---
 
 # Chaining Prompts - 1
 > * Split complex tasks into a series of simpler subtasks by chaining multiple prompts together. 
@@ -507,4 +523,4 @@ image: https://images.unsplash.com/photo-1468657988500-aca2be09f4c6?ixlib=rb-4.0
 - Modify the model’s temperature parameter to play around the model’s degree of randomness. The higher the temperature, the model’s output would be random than accurate, and even hallucinate.
 
 
---- 
+---
