@@ -221,7 +221,7 @@ class: text-center
 <span style="background-color:purple">caffe</span><span style="background-color:blue">ine </span><span style="background-color:darkgrey">to </span><span style="background-color:violet">code</span>
 </div>
 
-- example: Take the word <span style="background-color:green">Gobbledygook</span> and reverse it
+- example: Take the word <span style="background-color:green">Gobbledygook</span> and reverse it <icomoon-free-lab class="opacity-70"/> :- [Notebook example](https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-1.ipynb) <devicon-jupyter-wordmark/>
 <div v-click class="text-sm p-2">
 <span style="background-color:red">koogydebbolG</span> : This is Wrong!! - but why ?
 </div>
