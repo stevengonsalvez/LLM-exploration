@@ -508,10 +508,3 @@ image: https://images.unsplash.com/photo-1468657988500-aca2be09f4c6?ixlib=rb-4.0
 
 
 --- 
-
-# SPLIT section
-
-> * Dapr Component - Bindings - [MQTT](https://docs.dapr.io/reference/components-reference/supported-bindings/mqtt/)
-
-
--
