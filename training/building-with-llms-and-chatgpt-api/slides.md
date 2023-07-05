@@ -202,7 +202,20 @@ The training of base LLMs could take months , but from a base LLM to a instructi
 layout: center
 class: text-center
 ---
+
 # <icomoon-free-lab class="opacity-70"/> [Get started with an LLM](https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-1.ipynb) <devicon-jupyter-wordmark/>
+
+<!--
+Jupyter: 
+A simple, streamlined, document-centric experience, of executing live code
+
+
+temperature: A temperature of 0 means the responses will be very straightforward, almost deterministic (meaning you almost always get the same response to a given prompt)
+A temperature of 1 means the responses can vary wildly.
+
+For transformation tasks (extraction, standardization, format conversion, grammar fixes) prefer a temperature of 0 or up to 0.3.
+For writing tasks, you should juice the temperature higher, closer to 0.5. If you want GPT to be highly creative (for marketing or advertising copy for instance), consider values between 0.7 and 1.
+-->
 
 ---
 
@@ -238,9 +251,13 @@ Token Split:  <span style="background-color:green">["G", "ob", "ble", "dy", "goo
 <span style="background-color:blue">TIP:</span><span style="color:violet"> next-time when using Chatgpt to cheat on Scrabble, keep this in mind for better outputs</span>
 </div>
 
-<!--Notes: 
+<!--
+Notes: 
 - Why tokens
   - Not just English, need to be able to have text generation in multiple languages
+
+
+>at the end
   - Different models have different limits on the number of tokens (e.g: Anthropic Claude has a 100K context)
   - For English, roughly 1 token is 4 characters or 3/4 of a word (GPT model)
   - The token limits are mainly due to computational constraints, speed, accuracy etc. Processing very long sequences can be memory-intensive and may lead to increased computational complexity
@@ -332,6 +349,10 @@ class: text-center
 
 >example
 
+<Footnotes separator>
+  <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-2.ipynb" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
+</Footnotes>
+
 <!--Notes: 
 For instance, in a customer service assistant
 - important to first classify the type of user query (e.g: either product information or account information) a
@@ -390,6 +411,11 @@ layout: two-cols
 - exploration
 
 </div>
+
+<Footnotes separator>
+  <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-3.ipynb" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
+</Footnotes>
+
 ---
 
 # Chain of Thought Reasoning
