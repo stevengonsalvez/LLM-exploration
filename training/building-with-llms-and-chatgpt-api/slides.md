@@ -261,6 +261,19 @@ Notes:
   - Different models have different limits on the number of tokens (e.g: Anthropic Claude has a 100K context)
   - For English, roughly 1 token is 4 characters or 3/4 of a word (GPT model)
   - The token limits are mainly due to computational constraints, speed, accuracy etc. Processing very long sequences can be memory-intensive and may lead to increased computational complexity
+
+
+LLMs are mathematical functions whose input and output are lists of numbers. Consequently, words must be converted to numbers.
+
+In general, a LLM uses a separate tokenizer. A tokenizer maps between texts and lists of integers. The tokenizer is generally adapted to the entire training dataset first, then frozen, before the LLM is trained. A common choice is byte pair encoding.https://en.wikipedia.org/wiki/Byte_pair_encoding
+
+Here are a few considerations and techniques you can explore to potentially increase the token limits of a language model:
+
+- Model architecture modifications: You can explore model architectures that are designed to handle longer sequences more efficiently. For example, models like Longformer or BigBird are specifically designed to handle long-range dependencies more effectively than traditional transformer architectures.
+- Memory optimization techniques: Optimize the memory usage during training and inference. This can include techniques like gradient checkpointing, memory-efficient data structures, or model compression techniques to reduce the memory footprint.
+- Hardware resources: Increase the available hardware resources, such as using GPUs with larger memory capacity or distributed training across multiple machines.
+- Training strategies: Explore training strategies like curriculum learning or progressive training, where you start training with shorter sequences and gradually increase the sequence length during the training process.
+- Tokenization strategies: Experiment with tokenization approaches that can represent longer sequences with fewer tokens. For example, you can use byte-pair encoding (BPE) or other subword tokenization techniques to reduce the number of tokens required to represent the text.
 -->
 
 ---
