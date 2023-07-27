@@ -388,11 +388,10 @@ the delimiter: Is just a  way to separate different parts of an instruction or o
 - Will explore protecting against prompt injection
 
 ---
-title: "Moderation and Prompt Injection"
+title: Moderation and Prompt Injection
 level: 2
 layout: two-cols
 ---
-
 
 <span style="color:green" class="text-2xl">Moderation API</span>
 
@@ -428,6 +427,10 @@ layout: two-cols
 <Footnotes separator>
   <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo/blob/main/gpt-api/HLW-3.ipynb" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
 </Footnotes>
+
+<!--
+delimiters - remove delimiters from the user inputs. Users could try to confuse the system by asking what are the delimiters and using the delimiters to confuse the system
+-->
 
 ---
 
@@ -487,6 +490,11 @@ e.g: in technical support and proceed with relevant instructions from there
   - makes sure the model has all information it needs to carry out the task
   - and reduces the likelihood of errors
 
+
+Another analogy is the difference between long spaghetti code and modular code. 
+- Spaghetti code is hard to maintain and debug, and is prone to errors and difficult to debug
+
+The same is true for complex tasks using a large language model 
 -->
 
 ---
@@ -524,13 +532,27 @@ A problem is complex if
 - Using moderation API on the output
 - Using additional prompt steps for validation of the output
 
+<div v-click>
 
-<!--Notes: 
--->
+> When to use it
+- Increases the latency of the response to the customer
+- costs more, additional tokens
+- Refactoring cost of validator
+- And always think sustainability !
+</div>
+
+
 
 <Footnotes separator>
   <Footnote><a href="https://github.com/stevengonsalvez/LLM-dojo" rel="noopener noreferrer">LAB <devicon-jupyter-wordmark/></a></Footnote>
 </Footnotes>
+
+<!--
+Chain of thought reasoning on the output validation
+- example: validation of tone against brand guidelines (with some specific outlines on brand guidelines )
+- could have a set of guidelines/rules against which this validation is done, based on type of user or context
+- Validating output 
+-->
 
 ---
 layout: image
@@ -560,6 +582,17 @@ image: https://images.unsplash.com/photo-1468657988500-aca2be09f4c6?ixlib=rb-4.0
 - Ask for structured output (i.e. JSON format), this is useful for using the model output for another step.
 - Specify the intended tone of the text to get the tonality, format, and length of model output that you need. For example, you can instruct the model to formalize the language, generate not more than 50 words, etc.
 - Modify the model’s temperature parameter to play around the model’s degree of randomness. The higher the temperature, the model’s output would be random than accurate, and even hallucinate.
+
+
+---
+layout: image
+image: https://images.unsplash.com/photo-1549488799-496ecb87b5b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1548&q=80
+---
+
+<span style="color:green" class="text-5xl"> Next - Lab</span>
+
+<span style="color:lightblue" class="text-5xl" > Combine all these to build an<br/>
+fully functional customer service chatbot</span>
 
 
 ---
