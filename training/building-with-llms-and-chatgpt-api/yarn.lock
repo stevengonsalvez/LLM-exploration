@@ -450,9 +450,9 @@
     "@iconify/types" "*"
 
 "@iconify-json/icomoon-free@^1.1.4":
-  version "1.1.4"
-  resolved "https://registry.yarnpkg.com/@iconify-json/icomoon-free/-/icomoon-free-1.1.4.tgz#ae1ce47b919b13cde3bc6b6391f8d744184e10bb"
-  integrity sha512-HrUpi+0lwTS+jkbjFwLOeO/u2BuF3zWbS/AUOJEGbcXdhkX7uBRWa/V8IF9cFVhmd72mpp6Nk2Ic1h+R/cBpww==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@iconify-json/icomoon-free/-/icomoon-free-1.2.1.tgz#19e8614eb1acb8a15d60dd9b1923cf38a2bdc6dd"
+  integrity sha512-Me5L0/vH/LlhVr5R85TFah0LcJD7an6mv+5dagvXY/YnXQsOx3eB7GUioXheSoB8tObhvCuZFbvujMYKPKNWfw==
   dependencies:
     "@iconify/types" "*"
 
