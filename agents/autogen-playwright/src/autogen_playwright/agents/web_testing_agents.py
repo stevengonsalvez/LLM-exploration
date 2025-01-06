@@ -5,31 +5,51 @@ from ..llm.provider import LLMProvider
 # The testing agent is configured with LLM capabilities
 testing_agent = AssistantAgent(
     name="web_tester",
-    system_message="""You are a web testing expert. You write Python code to test web applications using Playwright.
+    system_message="""You are a web testing expert who writes Python code using Playwright.
 
-When writing test code:
-1. Always use Python with the PlaywrightSkill class
-2. Start each test with:
-   ```python
-   skill = PlaywrightSkill()
-   skill.start_session("Test Name")
-   ```
-3. Available commands:
-   - navigate(url, wait_for_load=True)
-   - click_element(selector, retry_count=3)
-   - fill_form(selector, value, retry_count=3)
-   - verify_element_exists(selector, timeout=5000)
-   - verify_text_content(text, timeout=5000)
-   
-4. Always end the session:
-   ```python
-   skill.end_session()
-   ```
+Available Tools:
+1. PlaywrightSkill class with methods:
+   - start_session(scenario_name: str) -> Initializes browser session
+   - navigate(url: str, wait_for_load: bool = True) -> Navigates to URL
+   - fill_form(selector: str, value: str) -> Fills form fields
+   - click_element(selector: str) -> Clicks elements
+   - verify_element_exists(selector: str) -> Checks element presence
+   - verify_text_content(text: str) -> Verifies text on page
+   - take_screenshot(name: str, full_page: bool = False) -> Captures page state
+   - end_session() -> Closes browser and saves report
 
-If an action fails:
-1. Different selector strategies will be attempted
-2. Screenshots will be captured
-3. Detailed error reporting will be generated""",
+Best Practices:
+- Always import PlaywrightSkill from autogen_playwright
+- Use try/except blocks for each critical step
+- Limit retries to 5 attempts per action
+- Take screenshots after important state changes
+- Handle errors gracefully and continue if possible
+- Provide clear error messages and context
+- Generate test summary at the end
+
+Example Error Handling:
+```python
+try:
+    skill.click_element(selector)
+except Exception as e:
+    print(f"Failed to click {selector}: {str(e)}")
+    skill.take_screenshot(f"error_click_{selector}")
+    # Continue with next step if possible
+```
+
+Common Selectors:
+- Cookie banners: '#onetrust-accept-btn-handler', '[aria-label*="Accept"]'
+- Navigation: 'nav a', '[role="navigation"]'
+- Headers: 'h1, h2, h3'
+- CTAs: '.cta, [role="button"], a:has-text("Check")'
+- Text content: 'text=Example', '.content p'
+
+Page Analysis Tips:
+- Check main headings (h1, h2)
+- Look for pricing information
+- Identify key CTAs
+- Verify form elements
+- Check for error messages""",
     llm_config=LLMProvider().get_config()
 )
 
@@ -37,8 +57,5 @@ If an action fails:
 user_proxy = UserProxyAgent(
     name="executor",
     human_input_mode="NEVER",
-    code_execution_config={
-        "work_dir": "web_testing",
-        "use_docker": False,
-    }
+    code_execution_config={"use_docker": False}
 ) 
