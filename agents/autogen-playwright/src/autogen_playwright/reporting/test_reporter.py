@@ -1,95 +1,112 @@
-from datetime import datetime
-import json
 import os
+from datetime import datetime
+from typing import List, Optional
 from pathlib import Path
-import shutil
+
+def find_script_root() -> Path:
+    """Find the root directory relative to the script location"""
+    # Get the directory containing the script
+    script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    # Go up to the project root (autogen-playwright)
+    project_root = script_dir.parent.parent.parent
+    return project_root
 
 class TestReport:
-    def __init__(self, scenario_name):
+    # Default report location in script's project root
+    DEFAULT_REPORT_DIR = find_script_root() / "reports"
+
+    def __init__(self, scenario_name: str, report_dir: Optional[Path] = None, enabled: bool = True):
+        """
+        Initialize test reporter
+        Args:
+            scenario_name: Name of the test scenario
+            report_dir: Custom report directory (defaults to project_root/reports)
+            enabled: Whether to generate reports (defaults to True)
+        """
         self.scenario_name = scenario_name
+        self.run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.steps: List[dict] = []
+        self.screenshots: List[str] = []
         self.start_time = datetime.now()
-        self.steps = []
-        self.screenshots = []
-        self.status = "PENDING"
+        self.end_time: Optional[datetime] = None
+        self.status = "Running"
+        self.enabled = enabled
         
-        # Get execution directory (where the script is run from)
-        self.execution_dir = Path.cwd()
+        if self.enabled:
+            # Use custom report dir if provided, otherwise use default
+            base_dir = report_dir if report_dir else self.DEFAULT_REPORT_DIR
+            self.report_dir = base_dir / f"run_{self.run_id}"
+            self.report_dir.mkdir(parents=True, exist_ok=True)
+            print(f"\nTest reports will be saved to: {self.report_dir.absolute()}")
         
-        # Create reports directory structure in execution directory
-        self.reports_dir = self.execution_dir / "reports"
-        self.reports_dir.mkdir(exist_ok=True)
-        
-        # Create timestamped directory for this run
-        self.timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
-        self.run_dir = self.reports_dir / f"run_{self.timestamp}"
-        self.run_dir.mkdir(exist_ok=True)
-        
-        # Create screenshots directory within run directory
-        self.screenshots_dir = self.run_dir / "screenshots"
-        self.screenshots_dir.mkdir(exist_ok=True)
-        
-        print(f"Reports will be saved to: {self.reports_dir.absolute()}")
-        
-    def add_step(self, action, status, error=None):
-        self.steps.append({
-            "action": action,
+    def add_step(self, description: str, status: str = "Success", error: Optional[str] = None):
+        """Add a test step to the report"""
+        step = {
+            "description": description,
             "status": status,
-            "error": str(error) if error else None,
-            "timestamp": datetime.now().isoformat()
-        })
-    
-    def add_screenshot(self, path):
-        # Copy screenshot to run directory and store relative path
-        src_path = Path(path)
-        if src_path.exists():
-            dest_path = self.screenshots_dir / src_path.name
-            shutil.copy2(src_path, dest_path)
-            self.screenshots.append(str(dest_path.relative_to(self.run_dir)))
-    
-    def generate_markdown(self):
+            "timestamp": datetime.now().isoformat(),
+            "error": error
+        }
+        self.steps.append(step)
+        
+        # Always print to console regardless of reporting status
+        print(f"\n{step['timestamp']} - {description}")
+        if error:
+            print(f"Error: {error}")
+        
+    def add_screenshot(self, screenshot_path: str):
+        """Add a screenshot to the report"""
+        if not self.enabled:
+            return
+
+        if os.path.exists(screenshot_path):
+            # Copy screenshot to report directory
+            new_path = self.report_dir / Path(screenshot_path).name
+            os.rename(screenshot_path, new_path)
+            self.screenshots.append(str(new_path))
+            print(f"Screenshot saved: {new_path}")
+        
+    def complete(self, status: str):
+        """Complete the test report"""
+        self.end_time = datetime.now()
+        self.status = status
+        
+        if self.enabled:
+            self._generate_markdown()
+            print(f"\nTest completed with status: {status}")
+            print(f"Report available at: {self.report_dir / 'report.md'}")
+        else:
+            print(f"\nTest completed with status: {status}")
+            print("Reporting is disabled - no report file generated")
+        
+    def _generate_markdown(self):
         """Generate markdown report"""
-        md = [
-            f"# Test Execution Report: {self.scenario_name}",
-            f"\nExecution Date: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}",
-            f"\nStatus: {self.status}",
-            "\n## Test Steps\n"
-        ]
-        
+        if not self.enabled:
+            return
+
+        report = f"""# Test Report: {self.scenario_name}
+
+## Summary
+- Run ID: {self.run_id}
+- Start Time: {self.start_time.isoformat()}
+- End Time: {self.end_time.isoformat() if self.end_time else 'N/A'}
+- Status: {self.status}
+
+## Test Steps
+"""
         for i, step in enumerate(self.steps, 1):
-            md.append(f"{i}. **{step['action']}**")
-            md.append(f"   - Status: {step['status']}")
-            if step['error']:
-                md.append(f"   - Error: {step['error']}")
-            md.append("")
-        
+            report += f"\n### Step {i}: {step['description']}\n"
+            report += f"- Status: {step['status']}\n"
+            report += f"- Time: {step['timestamp']}\n"
+            if step.get('error'):
+                report += f"- Error: {step['error']}\n"
+                
         if self.screenshots:
-            md.append("\n## Screenshots\n")
+            report += "\n## Screenshots\n"
             for screenshot in self.screenshots:
-                md.append(f"![Screenshot]({screenshot})")
-                md.append("")
-        
-        return "\n".join(md)
-    
-    def save(self):
-        """Save both JSON and Markdown reports"""
-        # Save JSON report
-        json_path = self.run_dir / "report.json"
-        with open(json_path, 'w') as f:
-            json.dump(self.to_dict(), f, indent=2)
-            
-        # Save Markdown report
-        md_path = self.run_dir / "report.md"
-        with open(md_path, 'w') as f:
-            f.write(self.generate_markdown())
-            
-        return str(self.run_dir)
-    
-    def to_dict(self):
-        return {
-            "scenario_name": self.scenario_name,
-            "start_time": self.start_time.isoformat(),
-            "end_time": datetime.now().isoformat(),
-            "status": self.status,
-            "steps": self.steps,
-            "screenshots": self.screenshots
-        } 
+                relative_path = os.path.relpath(screenshot, self.report_dir)
+                report += f"\n![Screenshot]({relative_path})\n"
+                
+        report_path = self.report_dir / "report.md"
+        with open(report_path, "w") as f:
+            f.write(report) 

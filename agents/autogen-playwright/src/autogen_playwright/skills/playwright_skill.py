@@ -1,193 +1,124 @@
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-import time
+from typing import Optional
 from pathlib import Path
-from datetime import datetime
-from autogen_playwright.reporting.test_reporter import TestReport
-from autogen_playwright.utils.constants import (
-    SCREENSHOTS_DIR,
-    DEFAULT_TIMEOUT,
-    DEFAULT_RETRY_COUNT,
-    BROWSER_CONFIG
-)
-from subprocess import run
+from playwright.sync_api import sync_playwright
+from ..reporting.test_reporter import TestReport
 
 class PlaywrightSkill:
-    def __init__(self):
-        self.playwright = None
+    def __init__(self, report_dir: Optional[Path] = None, reporting_enabled: bool = True):
+        """
+        Initialize PlaywrightSkill
+        Args:
+            report_dir: Custom report directory (defaults to ./reports)
+            reporting_enabled: Whether to generate reports (defaults to True)
+        """
         self.browser = None
+        self.context = None
         self.page = None
         self.report = None
+        self.report_dir = report_dir
+        self.reporting_enabled = reporting_enabled
         
-        # Use execution directory for screenshots
-        self.screenshot_dir = Path.cwd() / "screenshots"
-        self.screenshot_dir.mkdir(exist_ok=True)
+    def start_session(self, scenario_name: str):
+        """Start a new browser session"""
+        self.report = TestReport(
+            scenario_name,
+            report_dir=self.report_dir,
+            enabled=self.reporting_enabled
+        )
+        playwright = sync_playwright().start()
         
-        self.failed_steps = []
-        self.max_retries = 5
-        
-        # Install browsers if needed
-        try:
-            print("Checking Playwright installation...")
-            run(["playwright", "install", "chromium"], check=True)
-            print("Playwright browsers installed successfully")
-        except Exception as e:
-            print(f"Error installing Playwright browsers: {e}")
-            
-    def start_session(self, scenario_name="Unnamed Scenario"):
-        """Initialize playwright session and reporting"""
-        print(f"\nStarting test scenario: {scenario_name}")
-        self.playwright = sync_playwright().start()
-        
-        # Launch browser with explicit configuration
-        print("Launching browser...")
-        self.browser = self.playwright.chromium.launch(
-            headless=False,  # Force headed mode
-            slow_mo=500,     # Slow down for visibility
+        # Launch browser in headed mode with slower execution for visibility
+        self.browser = playwright.chromium.launch(
+            headless=False,  # Show the browser
+            slow_mo=500  # Add delay between actions for visibility
         )
         
-        # Configure viewport
-        context = self.browser.new_context(
+        # Configure viewport and create context
+        self.context = self.browser.new_context(
             viewport={'width': 1280, 'height': 720}
         )
-        self.page = context.new_page()
+        self.page = self.context.new_page()
+        self.report.add_step("Started browser session", "Success")
         
-        self.report = TestReport(scenario_name)
-        print("Browser session started successfully")
-        return "Browser session started successfully"
-    
-    def take_screenshot(self, name: str, full_page: bool = False) -> str:
-        """Capture screenshot of the current page state"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        path = self.screenshot_dir / f"{name}_{timestamp}.png"
-        
-        print(f"Taking screenshot: {name}")
-        self.page.screenshot(
-            path=str(path),
-            full_page=full_page
-        )
-        self.report.add_screenshot(str(path))
-        print(f"Screenshot saved: {path}")
-        return str(path)
-
-    def _retry_with_different_selectors(self, action, selector, *args):
-        """Try different selector strategies"""
-        selector_strategies = [
-            selector,  # Original selector
-            f"text={selector}",  # Try text content
-            f"[aria-label*='{selector}']",  # Try aria-label
-            f"[title*='{selector}']",  # Try title attribute
-            f"[data-testid*='{selector}']",  # Try test ID
-        ]
-        
-        last_error = None
-        for strategy in selector_strategies:
-            try:
-                return action(strategy, *args)
-            except Exception as e:
-                last_error = e
-                time.sleep(1)  # Brief pause between retries
-        
-        raise last_error
-
-    def navigate(self, url, wait_for_load=True):
-        """Navigate to specified URL with enhanced error handling"""
+    def navigate(self, url: str, wait_for_load: bool = True):
+        """Navigate to a URL"""
         try:
-            response = self.page.goto(url, wait_until="networkidle" if wait_for_load else "commit")
-            self.report.add_step(f"Navigate to {url}", "SUCCESS")
-            return f"Navigated to {url}"
+            self.page.goto(url, wait_until='networkidle' if wait_for_load else 'commit')
+            self.report.add_step(f"Navigated to {url}", "Success")
         except Exception as e:
-            self.take_screenshot("navigation_error")
-            self.report.add_step(f"Navigate to {url}", "FAILED", error=e)
+            self.report.add_step(f"Failed to navigate to {url}", "Error", str(e))
             raise
-
-    def click_element(self, selector, retry_count=3):
-        """Click an element with retry mechanism"""
+            
+    def fill_form(self, selector: str, value: str):
+        """Fill a form field"""
         try:
-            result = self._retry_with_different_selectors(self.page.click, selector)
-            self.report.add_step(f"Click {selector}", "SUCCESS")
-            return f"Clicked element: {selector}"
+            self.page.fill(selector, value)
+            self.report.add_step(f"Filled form field {selector} with value {value}", "Success")
         except Exception as e:
-            self.take_screenshot("click_error")
-            self.report.add_step(f"Click {selector}", "FAILED", error=e)
-            return f"Error clicking element: {str(e)}"
-
-    def fill_form(self, selector, value, retry_count=3):
-        """Fill a form field with retry mechanism"""
+            self.report.add_step(f"Failed to fill form field {selector}", "Error", str(e))
+            raise
+            
+    def click_element(self, selector: str):
+        """Click an element"""
         try:
-            result = self._retry_with_different_selectors(self.page.fill, selector, value)
-            self.report.add_step(f"Fill {selector} with {value}", "SUCCESS")
-            return f"Filled {selector} with {value}"
+            self.page.click(selector)
+            self.report.add_step(f"Clicked element {selector}", "Success")
         except Exception as e:
-            self.take_screenshot("fill_error")
-            self.report.add_step(f"Fill {selector} with {value}", "FAILED", error=e)
-            return f"Error filling form: {str(e)}"
-
-    def verify_element_exists(self, selector, timeout=5000):
-        """Verify element exists with timeout"""
+            self.report.add_step(f"Failed to click element {selector}", "Error", str(e))
+            raise
+            
+    def verify_element_exists(self, selector: str):
+        """Verify an element exists"""
         try:
-            self.page.wait_for_selector(selector, timeout=timeout)
-            self.report.add_step(f"Verify {selector} exists", "SUCCESS")
-            return True
-        except PlaywrightTimeout:
-            self.take_screenshot("verification_error")
-            self.report.add_step(f"Verify {selector} exists", "FAILED", 
-                               error="Element not found within timeout")
-            return False
-
-    def verify_text_content(self, text, timeout=5000):
+            element = self.page.query_selector(selector)
+            if element:
+                self.report.add_step(f"Verified element {selector} exists", "Success")
+                return True
+            else:
+                self.report.add_step(f"Element {selector} not found", "Failed")
+                return False
+        except Exception as e:
+            self.report.add_step(f"Error verifying element {selector}", "Error", str(e))
+            raise
+            
+    def verify_text_content(self, text: str):
         """Verify text exists on page"""
         try:
-            self.page.wait_for_selector(f"text={text}", timeout=timeout)
-            self.report.add_step(f"Verify text '{text}' exists", "SUCCESS")
-            return True
-        except PlaywrightTimeout:
-            self.take_screenshot("text_verification_error")
-            self.report.add_step(f"Verify text '{text}' exists", "FAILED",
-                               error="Text not found within timeout")
-            return False
-
-    def _handle_error(self, action: str, error: Exception, context: str = None):
-        """Handle errors and maintain failure records"""
-        error_msg = f"{action} failed: {str(error)}"
-        if context:
-            error_msg = f"{error_msg} (Context: {context})"
+            content = self.page.text_content('body')
+            if text in content:
+                self.report.add_step(f"Verified text '{text}' exists on page", "Success")
+                return True
+            else:
+                self.report.add_step(f"Text '{text}' not found on page", "Failed")
+                return False
+        except Exception as e:
+            self.report.add_step(f"Error verifying text '{text}'", "Error", str(e))
+            raise
             
-        self.failed_steps.append(error_msg)
-        self.take_screenshot(f"error_{action.lower().replace(' ', '_')}")
-        return error_msg
-        
-    def get_test_summary(self) -> dict:
-        """Get summary of test execution"""
-        return {
-            "total_steps": len(self.report.steps),
-            "failed_steps": self.failed_steps,
-            "screenshots": self.report.screenshots,
-            "status": self.report.status,
-            "start_time": self.report.start_time,
-            "end_time": datetime.now()
-        }
-        
-    def end_session(self, status="COMPLETED"):
-        """Clean up and save report with summary"""
+    def take_screenshot(self, name: str, full_page: bool = False):
+        """Take a screenshot"""
         try:
-            summary = self.get_test_summary()
-            print("\nTest Execution Summary:")
-            print("-" * 50)
-            print(f"Total Steps: {summary['total_steps']}")
-            print(f"Failed Steps: {len(summary['failed_steps'])}")
-            if summary['failed_steps']:
-                print("\nFailures:")
-                for failure in summary['failed_steps']:
-                    print(f"- {failure}")
-            print(f"\nScreenshots captured: {len(summary['screenshots'])}")
-            print(f"Test Status: {status}")
+            screenshot_path = f"{name}.png"
+            self.page.screenshot(path=screenshot_path, full_page=full_page)
+            self.report.add_screenshot(screenshot_path)
+            self.report.add_step(f"Took screenshot {name}", "Success")
+        except Exception as e:
+            self.report.add_step(f"Failed to take screenshot {name}", "Error", str(e))
+            raise
             
-            self.report.status = status
-            report_dir = self.report.save()
-            print(f"\nDetailed report available at: {report_dir}")
-            
-        finally:
+    def end_session(self, status: str = "Completed"):
+        """End the browser session and save report"""
+        try:
+            if self.page:
+                self.page.close()
+            if self.context:
+                self.context.close()
             if self.browser:
                 self.browser.close()
-            if self.playwright:
-                self.playwright.stop() 
+            if self.report:
+                self.report.complete(status)
+            self.report.add_step("Ended browser session", "Success")
+        except Exception as e:
+            if self.report:
+                self.report.add_step("Failed to end session cleanly", "Error", str(e))
+            raise 

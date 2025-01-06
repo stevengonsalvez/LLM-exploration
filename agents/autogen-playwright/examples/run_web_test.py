@@ -2,22 +2,42 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Get the project root directory (where .env should be)
-project_root = Path(__file__).parent.parent.parent
-env_path = project_root / '.env'
+def find_env_file():
+    """Find the .env file in the project root"""
+    current_dir = Path.cwd()
+    
+    # First check in current directory
+    env_path = current_dir / '.env'
+    if env_path.exists():
+        return env_path
+        
+    # Then check in project root (up one level from examples)
+    project_root = current_dir.parent if current_dir.name == 'examples' else current_dir
+    env_path = project_root / '.env'
+    if env_path.exists():
+        return env_path
+        
+    # Finally check in parent directory
+    env_path = project_root.parent / '.env'
+    if env_path.exists():
+        return env_path
+        
+    raise FileNotFoundError("Could not find .env file in project directories")
 
-# Load environment variables from .env file BEFORE other imports
-load_dotenv(dotenv_path=env_path)
-
-# Debug print
-print(f"Project root: {project_root}")
-print(f"Env file path: {env_path}")
-print(f"Env file exists: {env_path.exists()}")
-print(f"LLM_API_KEY loaded: {'LLM_API_KEY' in os.environ}")
-print(f"Current working directory: {os.getcwd()}")
-
-# Import after environment variables are loaded
-from autogen_playwright import testing_agent, user_proxy, PlaywrightSkill
+# Main execution block
+try:
+    # Find and load the correct .env file
+    env_path = find_env_file()
+    load_dotenv(dotenv_path=env_path)
+    
+    print(f"Environment loaded from: {env_path}")
+    print(f"Current working directory: {os.getcwd()}")
+    
+    # Import after environment variables are loaded
+    from autogen_playwright import testing_agent, user_proxy, PlaywrightSkill
+except Exception as e:
+    print(f"Failed to initialize: {str(e)}")
+    os._exit(1)
 
 def run_test():
     try:
@@ -41,40 +61,38 @@ def run_test():
             - Take screenshots at key steps
             - Provide detailed error information if steps fail
             - Generate a test summary at the end
+            - Do not continue conversation after test completion
             """,
-            max_consecutive_auto_reply=2
+            max_consecutive_auto_reply=1
         )
         
         # Print final test results and terminate
         print("\nChat Execution Summary:")
         print("-" * 50)
-        last_meaningful_message = None
         
+        test_completed = False
         for message in chat_result.chat_history:
             if message.get("content"):
                 content = message.get("content").strip()
-                if content:  # Only process non-empty messages
-                    last_meaningful_message = content
+                if content:
                     print(f"{message['role']}: {content}\n")
                     
-                    # Check for test completion markers
+                    # Check for completion indicators in the content
                     if any(marker in content for marker in [
                         "Test Status: COMPLETED",
-                        "Test Execution Summary",
-                        "Detailed report:"
+                        "Detailed report available at:",
+                        "has been successfully executed"
                     ]):
-                        print("Test execution completed, terminating...")
-                        return  # Exit function instead of using exit(0)
-        
-        # If we got here and have a last message, print it
-        if last_meaningful_message:
-            print(f"Last message received: {last_meaningful_message}")
-            
+                        test_completed = True
+                        break  # Stop processing more messages
+                        
+        if test_completed:
+            print("Test execution completed successfully. Terminating...")
+            os._exit(0)  # Force immediate termination
+                        
     except Exception as e:
         print(f"Test execution failed: {str(e)}")
-        return
-    finally:
-        print("Test execution completed")
+        os._exit(1)
 
 if __name__ == "__main__":
     run_test() 
