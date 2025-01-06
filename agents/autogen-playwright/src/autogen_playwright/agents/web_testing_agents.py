@@ -5,12 +5,12 @@ from ..llm.provider import LLMProvider
 def is_test_complete(msg: dict) -> bool:
     """Check if the test execution is complete or if message is empty"""
     content = msg.get("content", "")
+    if not content:
+        return False
+    
     content = content.lower()
-    return any(marker in content for marker in [
-        "report available at:",  # Report generation marker
-        "test completed with status",  # Test completion marker
-        "reporting is disabled - no report file generated"  # Non-reporting completion marker
-    ])
+    # Only terminate after the TestReport summary
+    return "you can find the full test report at:" in content
 
 def create_web_testing_agents(use_group_chat: bool = False):
     """
@@ -41,12 +41,11 @@ Best Practices:
 - Take screenshots after important state changes
 - Handle errors gracefully and continue if possible
 - Provide clear error messages and context
-- Generate test summary at the end
 
 Important Rules:
-- After test completion, do not generate any new code
-- Do not provide explanations after test summary
-- End the conversation after reporting test status
+- After test completion, call end_session() to generate the test report
+- Do not generate your own test summary (the report will include one)
+- End the conversation after the test report is generated
 - Do not acknowledge or respond to further messages
 
 Common Selectors:
@@ -54,14 +53,7 @@ Common Selectors:
 - Navigation: 'nav a', '[role="navigation"]'
 - Headers: 'h1, h2, h3'
 - CTAs: '.cta, [role="button"], a:has-text("Check")'
-- Text content: 'text=Example', '.content p'
-
-Page Analysis Tips:
-- Check main headings (h1, h2)
-- Look for pricing information
-- Identify key CTAs
-- Verify form elements
-- Check for error messages""",
+- Text content: 'text=Example', '.content p'""",
         llm_config=LLMProvider().get_config(),
         is_termination_msg=is_test_complete
     )

@@ -75,9 +75,28 @@ class TestReport:
             self._generate_markdown()
             print(f"\nTest completed with status: {status}")
             print(f"Report available at: {self.report_dir / 'report.md'}")
+            # Generate and print summary
+            self._print_summary()
         else:
             print(f"\nTest completed with status: {status}")
             print("Reporting is disabled - no report file generated")
+            
+    def _print_summary(self):
+        """Generate and print a test summary"""
+        print("\nTest Summary:")
+        print(f"1. The test \"{self.scenario_name}\" started at {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}.")
+        
+        # Print each step
+        for i, step in enumerate(self.steps[1:], 2):  # Start from 1 to skip the "Started browser session" step
+            print(f"{i}. {step['description']}")
+            
+        # Print screenshot info if any
+        if self.screenshots:
+            print(f"{len(self.steps) + 1}. Screenshots were taken and saved in: {self.report_dir}")
+            
+        # Print completion status
+        print(f"{len(self.steps) + 2}. Test completed with status: {self.status}")
+        print(f"\nYou can find the full test report at: {self.report_dir / 'report.md'}")
         
     def _generate_markdown(self):
         """Generate markdown report"""
