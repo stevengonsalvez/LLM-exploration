@@ -1,0 +1,13 @@
+from .constants import (
+    SCREENSHOTS_DIR,
+    DEFAULT_TIMEOUT,
+    DEFAULT_RETRY_COUNT,
+    BROWSER_CONFIG
+)
+
+__all__ = [
+    'SCREENSHOTS_DIR',
+    'DEFAULT_TIMEOUT',
+    'DEFAULT_RETRY_COUNT',
+    'BROWSER_CONFIG'
+] 
