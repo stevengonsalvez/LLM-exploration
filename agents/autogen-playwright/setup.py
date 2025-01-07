@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages # type: ignore
 from pathlib import Path
 
 # Read README.md if it exists, otherwise use a default description

@@ -1,16 +1,66 @@
 from autogen import AssistantAgent, UserProxyAgent, GroupChat, GroupChatManager
+import logging
+import json
+from typing import Optional
 from ..skills.playwright_skill import PlaywrightSkill
 from ..llm.provider import LLMProvider
+
+logger = logging.getLogger(__name__)
 
 def is_test_complete(msg: dict) -> bool:
     """Check if the test execution is complete or if message is empty"""
     content = msg.get("content", "")
     if not content:
+        logger.warning("Received empty message content")
         return False
     
     content = content.lower()
+    logger.info(f"Checking message content: {content[:100]}...")
     # Only terminate after the TestReport summary
     return "you can find the full test report at:" in content
+
+class ConversationMonitor:
+    """Monitor conversation for empty messages and token usage"""
+    def __init__(self, max_consecutive_empty: int = 3, max_total_tokens: Optional[int] = None):
+        self.max_consecutive_empty = max_consecutive_empty
+        self.max_total_tokens = max_total_tokens
+        self.consecutive_empty = 0
+        self.total_tokens = 0
+        
+    def check_message(self, msg: dict) -> bool:
+        """
+        Check message against termination conditions
+        Returns True if should terminate
+        """
+        content = msg.get("content", "").strip()
+        
+        # Check for empty messages
+        if not content:
+            self.consecutive_empty += 1
+            logger.warning(f"Empty message detected ({self.consecutive_empty}/{self.max_consecutive_empty})")
+            if self.consecutive_empty >= self.max_consecutive_empty:
+                logger.error(f"Terminating due to {self.consecutive_empty} consecutive empty messages")
+                return True
+        else:
+            self.consecutive_empty = 0
+            
+        # Track token usage if response contains it
+        try:
+            if "response" in msg:
+                response = json.loads(msg["response"])
+                if "usage" in response:
+                    usage = response["usage"]
+                    tokens = usage.get("total_tokens", 0)
+                    self.total_tokens += tokens
+                    logger.info(f"Total tokens used: {self.total_tokens}")
+                    
+                    if self.max_total_tokens and self.total_tokens >= self.max_total_tokens:
+                        logger.error(f"Terminating due to token limit: {self.total_tokens} >= {self.max_total_tokens}")
+                        return True
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
+            
+        return False
 
 def create_web_testing_agents(use_group_chat: bool = False):
     """
@@ -18,6 +68,21 @@ def create_web_testing_agents(use_group_chat: bool = False):
     Args:
         use_group_chat: Whether to use GroupChat for better conversation control
     """
+    llm_config = LLMProvider().get_config()
+    logger.info(f"Creating agents with config: {llm_config}")
+    
+    # Create conversation monitor
+    monitor = ConversationMonitor(
+        max_consecutive_empty=llm_config.get("max_consecutive_empty", 3),
+        max_total_tokens=llm_config.get("max_total_tokens")
+    )
+    
+    def is_termination_msg(msg: dict) -> bool:
+        """Combined check for test completion and conversation limits"""
+        if monitor.check_message(msg):
+            return True
+        return is_test_complete(msg)
+    
     # Create the testing agent
     testing_agent = AssistantAgent(
         name="web_tester",
@@ -54,16 +119,22 @@ Common Selectors:
 - Headers: 'h1, h2, h3'
 - CTAs: '.cta, [role="button"], a:has-text("Check")'
 - Text content: 'text=Example', '.content p'""",
-        llm_config=LLMProvider().get_config(),
-        is_termination_msg=is_test_complete
-    )
+        llm_config=llm_config,
+        is_termination_msg=is_termination_msg,
+        max_consecutive_auto_reply=1
+        )
 
     # Create the user proxy agent
     user_proxy = UserProxyAgent(
         name="executor",
         human_input_mode="NEVER",
-        code_execution_config={"use_docker": False},
-        is_termination_msg=is_test_complete
+        code_execution_config={
+            "use_docker": False,
+            "last_n_messages": 3,  # Consider last 3 messages for context
+            "work_dir": None       # Use default working directory
+        },
+        is_termination_msg=is_termination_msg,
+        max_consecutive_auto_reply=1
     )
 
     if use_group_chat:
@@ -74,8 +145,8 @@ Common Selectors:
                 messages=[],
                 max_round=15  # Limit conversation rounds
             ),
-            llm_config=LLMProvider().get_config(),
-            is_termination_msg=is_test_complete
+            llm_config=llm_config,
+            is_termination_msg=is_termination_msg
         )
         return testing_agent, user_proxy, manager
     
