@@ -1,15 +1,18 @@
 from typing import Optional
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 from ..reporting.test_reporter import TestReport
 
 class PlaywrightSkill:
-    def __init__(self, report_dir: Optional[Path] = None, reporting_enabled: bool = True):
+    def __init__(self, report_dir: Optional[Path] = None, reporting_enabled: bool = True,
+                 timeout: int = 5000, slow_mo: int = 100):
         """
         Initialize PlaywrightSkill
         Args:
             report_dir: Custom report directory (defaults to ./reports)
             reporting_enabled: Whether to generate reports (defaults to True)
+            timeout: Default timeout in milliseconds for actions (default 5000ms)
+            slow_mo: Delay between actions in milliseconds (default 100ms)
         """
         self.browser = None
         self.context = None
@@ -17,6 +20,8 @@ class PlaywrightSkill:
         self.report = None
         self.report_dir = report_dir
         self.reporting_enabled = reporting_enabled
+        self.timeout = timeout
+        self.slow_mo = slow_mo
         
     def start_session(self, scenario_name: str):
         """Start a new browser session"""
@@ -30,7 +35,7 @@ class PlaywrightSkill:
         # Launch browser in headed mode with slower execution for visibility
         self.browser = playwright.chromium.launch(
             headless=False,  # Show the browser
-            slow_mo=500  # Add delay between actions for visibility
+            slow_mo=self.slow_mo  # Add delay between actions for visibility
         )
         
         # Configure viewport and create context
@@ -38,13 +43,18 @@ class PlaywrightSkill:
             viewport={'width': 1280, 'height': 720}
         )
         self.page = self.context.new_page()
+        # Set default timeout for all operations
+        self.page.set_default_timeout(self.timeout)
         self.report.add_step("Started browser session", "Success")
         
     def navigate(self, url: str, wait_for_load: bool = True):
         """Navigate to a URL"""
         try:
-            self.page.goto(url, wait_until='networkidle' if wait_for_load else 'commit')
+            self.page.goto(url, wait_until='networkidle' if wait_for_load else 'commit', timeout=self.timeout)
             self.report.add_step(f"Navigated to {url}", "Success")
+        except PlaywrightTimeout as e:
+            self.report.add_step(f"Navigation timeout for {url}", "Warning", str(e))
+            # Continue execution as page might have loaded enough
         except Exception as e:
             self.report.add_step(f"Failed to navigate to {url}", "Error", str(e))
             raise
@@ -52,7 +62,7 @@ class PlaywrightSkill:
     def fill_form(self, selector: str, value: str):
         """Fill a form field"""
         try:
-            self.page.fill(selector, value)
+            self.page.fill(selector, value, timeout=self.timeout)
             self.report.add_step(f"Filled form field {selector} with value {value}", "Success")
         except Exception as e:
             self.report.add_step(f"Failed to fill form field {selector}", "Error", str(e))
@@ -61,8 +71,16 @@ class PlaywrightSkill:
     def click_element(self, selector: str):
         """Click an element"""
         try:
-            self.page.click(selector)
+            self.page.click(selector, timeout=self.timeout)
             self.report.add_step(f"Clicked element {selector}", "Success")
+        except PlaywrightTimeout as e:
+            self.report.add_step(f"Click timeout for {selector}", "Warning", str(e))
+            # Try force click as fallback
+            try:
+                self.page.evaluate(f"document.querySelector('{selector}').click()")
+                self.report.add_step(f"Force clicked element {selector}", "Success")
+            except Exception as force_e:
+                raise Exception(f"Both normal and force click failed: {str(e)}, {str(force_e)}")
         except Exception as e:
             self.report.add_step(f"Failed to click element {selector}", "Error", str(e))
             raise
