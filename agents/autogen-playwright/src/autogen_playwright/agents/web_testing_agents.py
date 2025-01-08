@@ -152,8 +152,5 @@ Common Selectors:
     
     return testing_agent, user_proxy
 
-# Create default instances for backward compatibility
-testing_agent, user_proxy = create_web_testing_agents()
-
-# Export both the function and default instances
-__all__ = ['create_web_testing_agents', 'testing_agent', 'user_proxy'] 
+# Export only the function
+__all__ = ['create_web_testing_agents'] 

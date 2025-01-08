@@ -39,7 +39,10 @@ def run_test():
         logger.info("Starting test execution...")
         
         # Import after environment variables are loaded
-        from autogen_playwright import testing_agent, user_proxy, PlaywrightSkill
+        from autogen_playwright import create_web_testing_agents, PlaywrightSkill
+        
+        # Create agents with loaded environment
+        testing_agent, user_proxy = create_web_testing_agents()
         
         # Start runtime logging with SQLite
         db_path = Path("runtime_logs/autogen_logs.db")
@@ -61,7 +64,7 @@ def run_test():
         1. Navigate to ee.co.uk
         2. Accept cookies in the OneTrust banner
         3. Navigate to Broadband section
-        4. Click on 'Explore Broadband'
+        4. Navigate to explore broadband page
         5. Analyze and summarize the page content
         6. Verify presence of broadband availability checker
         
@@ -135,10 +138,13 @@ if __name__ == "__main__":
     try:
         # Find and load the correct .env file
         env_path = find_env_file()
-        load_dotenv(dotenv_path=env_path)
+        load_dotenv(dotenv_path=env_path, override=True)  # Force override any existing env vars
         
         logger.info(f"Environment loaded from: {env_path}")
         logger.info(f"Current working directory: {os.getcwd()}")
+        logger.info(f"Environment variables after loading:")
+        logger.info(f"LLM_PROVIDER: {os.getenv('LLM_PROVIDER')}")
+        logger.info(f"LLM_MODEL: {os.getenv('LLM_MODEL')}")
         
         success = run_test()
         exit_code = 0 if success else 1

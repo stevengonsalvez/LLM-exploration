@@ -1,6 +1,9 @@
 from typing import Dict, Optional, Any
 import os
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class LLMConfig:
@@ -18,6 +21,11 @@ class LLMConfig:
     
     @classmethod
     def from_env(cls) -> 'LLMConfig':
+        # Debug log all relevant environment variables
+        logger.info(f"Loading environment variables:")
+        logger.info(f"LLM_PROVIDER: {os.getenv('LLM_PROVIDER')}")
+        logger.info(f"LLM_MODEL: {os.getenv('LLM_MODEL')}")
+        
         api_key = os.getenv('LLM_API_KEY')
         if not api_key:
             raise ValueError("LLM_API_KEY environment variable must be set")
@@ -26,7 +34,7 @@ class LLMConfig:
         max_total_tokens_str = os.getenv('LLM_MAX_TOTAL_TOKENS')
         max_total_tokens = int(max_total_tokens_str) if max_total_tokens_str else None
             
-        return cls(
+        config = cls(
             provider=os.getenv('LLM_PROVIDER', 'openai'),
             api_key=api_key,
             model=os.getenv('LLM_MODEL', 'gpt-4'),
@@ -39,3 +47,6 @@ class LLMConfig:
             max_consecutive_empty=int(os.getenv('LLM_MAX_CONSECUTIVE_EMPTY', '3')),
             max_total_tokens=max_total_tokens
         )
+        
+        logger.info(f"Created config with provider: {config.provider}, model: {config.model}")
+        return config

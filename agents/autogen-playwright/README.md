@@ -67,6 +67,36 @@ HEADLESS=true
 AGENTOPS_API_KEY=your_api_key
 ```
 
+## LLM Caching
+The framework implements disk-based caching for LLM responses to optimize costs and improve response times:
+
+### Cache Configuration
+- **Enable/Disable**: Set via `LLM_CACHE_ENABLE` (defaults to true)
+- **Cache Location**: Configured through `LLM_CACHE_PATH` (defaults to '/tmp/autogen-playwright-cache')
+- **Cache Seeding**: Optional cache seed via `LLM_CACHE_SEED` for reproducible results
+
+### What Gets Cached
+- All LLM interactions including:
+  - Test planning conversations
+  - Test step generation
+  - Response analysis
+  - Error handling decisions
+
+### Cache Behavior
+- **Cache Keys**: Generated based on the conversation context and prompt
+- **Hit/Miss Logging**: All cache interactions are logged for monitoring
+- **Persistence**: Cache files are stored on disk and persist between runs
+- **Cost Savings**: Repeated test scenarios reuse cached responses
+
+### Monitoring Cache Performance
+The framework includes built-in cache analytics:
+```python
+from autogen_playwright.ops import print_session_summary
+
+# Get cache hit rates and token usage
+stats = print_session_summary(session_id="your_session_id")
+```
+
 ## Project Goals
 1. **Explore AutoGen Capabilities**: Investigate how AutoGen's multi-agent system can be applied to web testing
 2. **Natural Language Testing**: Enable test creation and maintenance using natural language

@@ -33,13 +33,15 @@ class LLMProvider:
         self.config = config or LLMConfig.from_env()
         self._set_provider_env_vars()
         self.logger = logging.getLogger(__name__)
+        self.logger.info(f"Initializing LLM with provider: {self.config.provider}, model: {self.config.model}")
         
     def _set_provider_env_vars(self):
         """Map LLM_API_KEY to provider-specific environment variables"""
         provider_env_mapping = {
             'openai': 'OPENAI_API_KEY',
             'anthropic': 'ANTHROPIC_API_KEY',
-            'azure': 'AZURE_OPENAI_API_KEY'
+            'azure': 'AZURE_OPENAI_API_KEY',
+            'cerebras': 'CEREBRAS_API_KEY'
         }
         
         if env_var := provider_env_mapping.get(self.config.provider):
@@ -76,6 +78,11 @@ class LLMProvider:
             },
             "azure": {
                 "deployment_name": self.config.model,
+                "timeout": self.config.request_timeout,
+            },
+            "cerebras": {
+                "model": self.config.model,
+                "api_type": "cerebras",
                 "timeout": self.config.request_timeout,
             }
         }
