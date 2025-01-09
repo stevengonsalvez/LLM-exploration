@@ -59,7 +59,7 @@ def run_test(test_steps=None):
         default_steps = [
             "Navigate to ee.co.uk",
             "Accept cookies in the OneTrust banner",
-            "Hover over Broadband in the menu",
+            "Hover over 'Broadband' in the global navigation menu",
             "click to 'explore broadband' within the submenu pop up on the hover",
             "Analyze and summarize the page content",
             "Then go and enter postcode as UB87PE in the postcode field and click continue"

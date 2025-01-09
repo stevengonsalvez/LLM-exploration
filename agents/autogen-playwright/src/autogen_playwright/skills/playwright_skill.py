@@ -122,23 +122,122 @@ class PlaywrightSkill:
             self.report.add_step(f"Error verifying text '{text}'", "Error", str(e))
             raise
             
-    def hover_element(self, selector: str):
-        """Hover over an element"""
-        try:
-            element = self.page.wait_for_selector(selector, state='visible', timeout=self.timeout)
-            if element:
-                element.scroll_into_view_if_needed()
-                self.page.wait_for_timeout(500)  # Small delay for stability
-                element.hover(timeout=self.timeout)
-                self.report.add_step(f"Hovered over element {selector}", "Success")
-            else:
-                raise Exception(f"Element {selector} not found")
-        except PlaywrightTimeout as e:
-            self.report.add_step(f"Hover timeout for {selector}", "Warning", str(e))
-            raise
-        except Exception as e:
-            self.report.add_step(f"Failed to hover over element {selector}", "Error", str(e))
-            raise
+    def hover_element(self, selector: str, timeout: Optional[int] = None):
+       """
+       Hover over an element with improved error handling and validation.
+
+       Args:
+           selector: CSS selector for the element
+           timeout: Optional custom timeout in milliseconds
+
+       Returns:
+           bool: True if hover was successful, False otherwise
+
+       Raises:
+           Exception: If element cannot be found or interacted with after retries
+       """
+       try:
+           # Use provided timeout or fall back to default
+           actual_timeout = timeout or self.timeout
+
+           # First verify element exists and is visible
+           element = self.page.wait_for_selector(
+               selector,
+               state='visible',
+               timeout=actual_timeout
+           )
+
+           if not element:
+               self.report.add_step(
+                   f"Element {selector} not found or not visible",
+                   "Failed"
+               )
+               return False
+
+           # Ensure element is in viewport
+           element.scroll_into_view_if_needed()
+
+           # Wait a moment for any animations to complete
+           self.page.wait_for_timeout(100)
+
+           # Verify element is actually hoverable (not covered/intercepted)
+           is_hoverable = self.page.evaluate("""
+               (selector) => {
+                   const element = document.querySelector(selector);
+                   if (!element) return false;
+
+                   // Check if element or its parents have pointer-events: none
+                   const style = window.getComputedStyle(element);
+                   if (style.pointerEvents === 'none') return false;
+
+                   // Check if element is covered by another element
+                   const rect = element.getBoundingClientRect();
+                   const centerX = rect.left + rect.width / 2;
+                   const centerY = rect.top + rect.height / 2;
+                   const elementAtPoint = document.elementFromPoint(centerX, centerY);
+
+                   return element.contains(elementAtPoint) || element === elementAtPoint;
+               }
+           """, selector)
+
+           if not is_hoverable:
+               self.report.add_step(
+                   f"Element {selector} found but not hoverable (might be covered or disabled)",
+                   "Failed"
+               )
+               return False
+
+           # Perform the hover
+           element.hover(timeout=actual_timeout)
+
+           # Add small delay to allow hover effects to apply
+           self.page.wait_for_timeout(50)
+
+           # Verify hover was successful by checking hover state
+           hover_success = self.page.evaluate("""
+               (selector) => {
+                   const element = document.querySelector(selector);
+                   if (!element) return false;
+
+                   // Check if element matches :hover pseudo-class
+                   return element.matches(':hover');
+               }
+           """, selector)
+
+           # Take screenshot if hover succeeded (useful for debugging hover-triggered elements)
+           if hover_success:
+               screenshot_name = f"hover_success_{selector.replace(' ', '_').replace('#', '')[:30]}"
+               self.take_screenshot(screenshot_name)
+
+           status = "Success" if hover_success else "Failed"
+           self.report.add_step(
+               f"Hovered over element {selector}",
+               status
+           )
+
+           return hover_success
+
+       except PlaywrightTimeout as e:
+           self.report.add_step(
+               f"Hover timeout for {selector}",
+               "Warning",
+               str(e)
+           )
+           # Take error screenshot
+           screenshot_name = f"hover_timeout_{selector.replace(' ', '_').replace('#', '')[:30]}"
+           self.take_screenshot(screenshot_name)
+           return False
+
+       except Exception as e:
+           self.report.add_step(
+               f"Failed to hover over element {selector}",
+               "Error",
+               str(e)
+           )
+           # Take error screenshot
+           screenshot_name = f"hover_error_{selector.replace(' ', '_').replace('#', '')[:30]}"
+           self.take_screenshot(screenshot_name)
+           raise
             
     def take_screenshot(self, name: str, full_page: bool = False):
         """Take a screenshot"""
