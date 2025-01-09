@@ -5,7 +5,7 @@ from ..reporting.test_reporter import TestReport
 
 class PlaywrightSkill:
     def __init__(self, report_dir: Optional[Path] = None, reporting_enabled: bool = True,
-                 timeout: int = 5000, slow_mo: int = 100):
+                 timeout: int = 6000, slow_mo: int = 100):
         """
         Initialize PlaywrightSkill
         Args:
@@ -71,8 +71,17 @@ class PlaywrightSkill:
     def click_element(self, selector: str):
         """Click an element"""
         try:
-            self.page.click(selector, timeout=self.timeout)
-            self.report.add_step(f"Clicked element {selector}", "Success")
+            # Wait for element to be visible and clickable
+            element = self.page.wait_for_selector(selector, state='visible', timeout=self.timeout)
+            if element:
+                # Ensure element is in viewport
+                element.scroll_into_view_if_needed()
+                # Small delay to ensure element is stable
+                self.page.wait_for_timeout(500)
+                element.click(timeout=self.timeout)
+                self.report.add_step(f"Clicked element {selector}", "Success")
+            else:
+                raise Exception(f"Element {selector} not found")
         except PlaywrightTimeout as e:
             self.report.add_step(f"Click timeout for {selector}", "Warning", str(e))
             # Try force click as fallback
@@ -111,6 +120,24 @@ class PlaywrightSkill:
                 return False
         except Exception as e:
             self.report.add_step(f"Error verifying text '{text}'", "Error", str(e))
+            raise
+            
+    def hover_element(self, selector: str):
+        """Hover over an element"""
+        try:
+            element = self.page.wait_for_selector(selector, state='visible', timeout=self.timeout)
+            if element:
+                element.scroll_into_view_if_needed()
+                self.page.wait_for_timeout(500)  # Small delay for stability
+                element.hover(timeout=self.timeout)
+                self.report.add_step(f"Hovered over element {selector}", "Success")
+            else:
+                raise Exception(f"Element {selector} not found")
+        except PlaywrightTimeout as e:
+            self.report.add_step(f"Hover timeout for {selector}", "Warning", str(e))
+            raise
+        except Exception as e:
+            self.report.add_step(f"Failed to hover over element {selector}", "Error", str(e))
             raise
             
     def take_screenshot(self, name: str, full_page: bool = False):

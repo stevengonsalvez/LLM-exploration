@@ -34,7 +34,7 @@ def find_env_file():
         
     raise FileNotFoundError("Could not find .env file in project directories")
 
-def run_test():
+def run_test(test_steps=None):
     try:
         logger.info("Starting test execution...")
         
@@ -42,31 +42,40 @@ def run_test():
         from autogen_playwright import create_web_testing_agents, PlaywrightSkill
         
         # Create agents with loaded environment
-        testing_agent, user_proxy = create_web_testing_agents()
+        testing_agent, debug_agent, admin_agent, user_proxy, manager = create_web_testing_agents()
         
         # Start runtime logging with SQLite
         db_path = Path("runtime_logs/autogen_logs.db")
         db_path.parent.mkdir(exist_ok=True)
         logging_config = {
             "dbname": str(db_path),
-            "table_name": "agent_logs",  # Optional: specify table name
-            "create_table": True         # Optional: create table if not exists
+            "table_name": "agent_logs",
+            "create_table": True
         }
         logging_session_id = autogen.runtime_logging.start(config=logging_config)
         logger.info(f"Started autogen runtime logging with session ID: {logging_session_id}")
         
-        test_message = """
+        # Default test steps if none provided
+        default_steps = [
+            "Navigate to ee.co.uk",
+            "Accept cookies in the OneTrust banner",
+            "Hover over Broadband in the menu",
+            "click to 'explore broadband' within the submenu pop up on the hover",
+            "Analyze and summarize the page content",
+            "Then go and enter postcode as UB87PE in the postcode field and click continue"
+            "Analyze and summarize the page"
+        ]
+        
+        steps_to_use = test_steps if test_steps else default_steps
+        steps_formatted = "\n".join(f"{i+1}. {step}" for i, step in enumerate(steps_to_use))
+        
+        test_message = f"""
         Execute the following test scenario:
         
         Test Scenario: EE Broadband Page Navigation and Validation
         
         Steps:
-        1. Navigate to ee.co.uk
-        2. Accept cookies in the OneTrust banner
-        3. Navigate to Broadband section
-        4. Navigate to explore broadband page
-        5. Analyze and summarize the page content
-        6. Verify presence of broadband availability checker
+        {steps_formatted}
         
         Important:
         - Maximum 5 retries for any action
@@ -77,12 +86,11 @@ def run_test():
         """
         
         try:
-            logger.info("Initiating chat with test message...")
+            logger.info("Initiating group chat with test message...")
+            # Initiate chat with the group chat manager
             chat_result = user_proxy.initiate_chat(
-                testing_agent,
-                message=test_message,
-                max_consecutive_auto_reply=1,  # Maximum consecutive replies without human input
-                max_turns=3,                   # Maximum total turns in the conversation
+                manager,
+                message=test_message
             )
             
             # Print final test results and terminate
@@ -91,16 +99,29 @@ def run_test():
             print("-" * 50)
             
             test_completed = False
-            for message in chat_result.chat_history:
-                role = message.get('role', 'unknown')
+            execution_failed = False
+            # Handle the chat history which might be in a different format with manager.run
+            chat_history = getattr(chat_result, 'chat_history', chat_result)
+            if isinstance(chat_history, dict):
+                chat_history = [chat_history]
+                
+            for message in chat_history:
+                role = message.get('role', message.get('name', 'unknown'))
                 content = message.get('content', '').strip()
                 
                 if content:
                     logger.info(f"Message from {role}: {content[:100]}...")
                     print(f"{role}: {content}\n")
                     
-                    # Check for completion indicators
-                    if any(marker in content.lower() for marker in [
+                    # Check for execution failures that should trigger debug agent
+                    if role == "executor" and ("execution failed" in content.lower() or "exitcode: 1" in content.lower()):
+                        execution_failed = True
+                        logger.warning("Detected execution failure, continuing chat for debug agent intervention")
+                        # Continue the chat to allow debug agent to handle the error
+                        continue
+                    
+                    # Check for completion indicators only if no execution failure
+                    if not execution_failed and any(marker in content.lower() for marker in [
                         "test status: completed",
                         "detailed report available at:",
                         "has been successfully executed",
@@ -114,6 +135,11 @@ def run_test():
                 logger.info("Test execution completed successfully")
                 print("Test execution completed successfully. Terminating...")
                 return True
+            elif execution_failed:
+                logger.warning("Test execution failed, debug agent intervention required")
+                print("Test execution failed, continuing with debug agent...")
+                # Let the group chat continue with debug agent
+                return False
             else:
                 logger.warning("Test execution did not complete properly")
                 print("Test execution did not complete properly")
@@ -138,7 +164,7 @@ if __name__ == "__main__":
     try:
         # Find and load the correct .env file
         env_path = find_env_file()
-        load_dotenv(dotenv_path=env_path, override=True)  # Force override any existing env vars
+        load_dotenv(dotenv_path=env_path, override=True)
         
         logger.info(f"Environment loaded from: {env_path}")
         logger.info(f"Current working directory: {os.getcwd()}")
@@ -146,7 +172,19 @@ if __name__ == "__main__":
         logger.info(f"LLM_PROVIDER: {os.getenv('LLM_PROVIDER')}")
         logger.info(f"LLM_MODEL: {os.getenv('LLM_MODEL')}")
         
-        success = run_test()
+        # Example of how to pass custom steps
+        custom_steps = os.getenv('TEST_STEPS')
+        if custom_steps:
+            try:
+                import json
+                steps = json.loads(custom_steps)
+            except json.JSONDecodeError:
+                logger.warning("Invalid TEST_STEPS format, using default steps")
+                steps = None
+        else:
+            steps = None
+            
+        success = run_test(test_steps=steps)
         exit_code = 0 if success else 1
         os._exit(exit_code)
         
