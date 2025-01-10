@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any, Tuple, Union
 from ..skills.playwright_skill import PlaywrightSkill
 from ..llm.provider import LLMProvider
 from ..prompts import WEB_TESTER_PROMPT, DEBUG_AGENT_PROMPT, SECURITY_ADMIN_PROMPT
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -126,28 +127,15 @@ class ConversationMonitor:
             
         return False
 
-def create_web_testing_agents(use_group_chat: bool = True) -> Union[Tuple[AssistantAgent, AssistantAgent, AssistantAgent, UserProxyAgent, GroupChatManager], 
-                                                                  Tuple[AssistantAgent, UserProxyAgent]]:
+def create_agents(llm_config: dict, monitor: ConversationMonitor) -> Dict[str, Union[AssistantAgent, UserProxyAgent]]:
     """
-    Create and initialize web testing agents
+    Create all the agents needed for web testing
     Args:
-        use_group_chat: Whether to use GroupChat for better conversation control (default: True)
+        llm_config: LLM configuration
+        monitor: Conversation monitor instance
     Returns:
-        If use_group_chat=True:
-            Tuple[AssistantAgent, AssistantAgent, AssistantAgent, UserProxyAgent, GroupChatManager]: 
-            (testing_agent, debug_agent, admin_agent, user_proxy, manager)
-        If use_group_chat=False:
-            Tuple[AssistantAgent, UserProxyAgent]: (testing_agent, user_proxy)
+        Dict of agents with their names as keys
     """
-    llm_config = LLMProvider().get_config()
-    logger.info(f"Creating agents with config: {llm_config}")
-    
-    # Create conversation monitor
-    monitor = ConversationMonitor(
-        max_consecutive_empty=llm_config.get("max_consecutive_empty", 3),
-        max_total_tokens=llm_config.get("max_total_tokens")
-    )
-    
     def is_termination_msg(msg: dict) -> bool:
         """Combined check for test completion and conversation limits"""
         if monitor.check_message(msg):
@@ -184,37 +172,89 @@ def create_web_testing_agents(use_group_chat: bool = True) -> Union[Tuple[Assist
     )
 
     # Create the user proxy agent
-    user_proxy = UserProxyAgent(
+    executor = UserProxyAgent(
         name="executor",
         human_input_mode="NEVER",
         code_execution_config={
             "use_docker": False,
             "last_n_messages": 3,
-            "work_dir": None
+            "work_dir": None,
+            "timeout": int(os.getenv('EXECUTION_TIMEOUT', '300'))  # 5 minutes default timeout
         },
         is_termination_msg=is_termination_msg,
         max_consecutive_auto_reply=1
     )
 
-    if use_group_chat:
-        # Create a group chat with all agents and custom speaker selection
-        groupchat = GroupChat(
-            agents=[testing_agent, debug_agent, admin_agent, user_proxy],
-            messages=[],
-            max_round=15,
-            speaker_selection_method=custom_speaker_selection,
-            allow_repeat_speaker=False
-        )
-        
-        # Create a manager agent to coordinate the conversation
-        manager = GroupChatManager(
-            groupchat=groupchat,
-            llm_config=llm_config,
-            is_termination_msg=is_termination_msg
-        )
-        return testing_agent, debug_agent, admin_agent, user_proxy, manager
+    # Set debug logging if enabled
+    if os.getenv('EXECUTION_DEBUG', 'false').lower() == 'true':
+        logging.getLogger('autogen.agentchat.conversable_agent').setLevel(logging.DEBUG)
+        logging.getLogger('autogen.code_utils').setLevel(logging.DEBUG)
+
+    return {
+        "web_tester": testing_agent,
+        "debug_agent": debug_agent,
+        "security_admin": admin_agent,
+        "executor": executor
+    }
+
+def setup_group_chat(agents: Dict[str, Union[AssistantAgent, UserProxyAgent]], llm_config: dict) -> GroupChatManager:
+    """
+    Set up a group chat with all agents
+    Args:
+        agents: Dictionary of agents
+        llm_config: LLM configuration
+    Returns:
+        GroupChatManager instance
+    """
+    groupchat = GroupChat(
+        agents=list(agents.values()),
+        messages=[],
+        max_round=15,
+        speaker_selection_method=custom_speaker_selection,
+        allow_repeat_speaker=False
+    )
     
-    return testing_agent, user_proxy
+    return GroupChatManager(
+        groupchat=groupchat,
+        llm_config=llm_config,
+        is_termination_msg=agents["web_tester"]._is_termination_msg
+    )
+
+def create_web_testing_agents(use_group_chat: bool = True) -> Union[Tuple[AssistantAgent, AssistantAgent, AssistantAgent, UserProxyAgent, GroupChatManager], 
+                                                                  Tuple[AssistantAgent, UserProxyAgent]]:
+    """
+    Create and initialize web testing agents
+    Args:
+        use_group_chat: Whether to use GroupChat for better conversation control (default: True)
+    Returns:
+        If use_group_chat=True:
+            Tuple[AssistantAgent, AssistantAgent, AssistantAgent, UserProxyAgent, GroupChatManager]
+        If use_group_chat=False:
+            Tuple[AssistantAgent, UserProxyAgent]
+    """
+    llm_config = LLMProvider().get_config()
+    logger.info(f"Creating agents with config: {llm_config}")
+    
+    # Create conversation monitor
+    monitor = ConversationMonitor(
+        max_consecutive_empty=llm_config.get("max_consecutive_empty", 3),
+        max_total_tokens=llm_config.get("max_total_tokens")
+    )
+    
+    # Create all agents
+    agents = create_agents(llm_config, monitor)
+    
+    if use_group_chat:
+        manager = setup_group_chat(agents, llm_config)
+        return (
+            agents["web_tester"],
+            agents["debug_agent"],
+            agents["security_admin"],
+            agents["executor"],
+            manager
+        )
+    
+    return agents["web_tester"], agents["executor"]
 
 # Export only the function
 __all__ = ['create_web_testing_agents'] 

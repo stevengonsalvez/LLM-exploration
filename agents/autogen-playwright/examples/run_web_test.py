@@ -42,7 +42,15 @@ def run_test(test_steps=None):
         from autogen_playwright import create_web_testing_agents, PlaywrightSkill
         
         # Create agents with loaded environment
-        testing_agent, debug_agent, admin_agent, user_proxy, manager = create_web_testing_agents()
+        use_group_chat = os.getenv('USE_GROUP_CHAT', 'true').lower() == 'true'
+        logger.info(f"Using group chat mode: {use_group_chat}")
+        
+        agents = create_web_testing_agents(use_group_chat=use_group_chat)
+        
+        if use_group_chat:
+            testing_agent, debug_agent, admin_agent, executor, manager = agents
+        else:
+            testing_agent, executor = agents
         
         # Start runtime logging with SQLite
         db_path = Path("runtime_logs/autogen_logs.db")
@@ -62,7 +70,7 @@ def run_test(test_steps=None):
             "Hover over 'Broadband' in the global navigation menu",
             "click to 'explore broadband' within the submenu pop up on the hover",
             "Analyze and summarize the page content",
-            "Then go and enter postcode as UB87PE in the postcode field and click continue"
+            "Then go and enter postcode as UB87PE in the postcode field and click continue",
             "Analyze and summarize the page"
         ]
         
@@ -82,68 +90,28 @@ def run_test(test_steps=None):
         - Take screenshots at key steps
         - Provide detailed error information if steps fail
         - Generate a test summary at the end
-        - Do not continue conversation after test completion
         """
         
         try:
-            logger.info("Initiating group chat with test message...")
-            # Initiate chat with the group chat manager
-            chat_result = user_proxy.initiate_chat(
-                manager,
-                message=test_message
-            )
+            logger.info("Initiating chat with test message...")
+            max_iterations = int(os.getenv('MAX_ITERATIONS', '10'))
             
-            # Print final test results and terminate
-            logger.info("Chat completed, processing results...")
-            print("\nChat Execution Summary:")
-            print("-" * 50)
-            
-            test_completed = False
-            execution_failed = False
-            # Handle the chat history which might be in a different format with manager.run
-            chat_history = getattr(chat_result, 'chat_history', chat_result)
-            if isinstance(chat_history, dict):
-                chat_history = [chat_history]
-                
-            for message in chat_history:
-                role = message.get('role', message.get('name', 'unknown'))
-                content = message.get('content', '').strip()
-                
-                if content:
-                    logger.info(f"Message from {role}: {content[:100]}...")
-                    print(f"{role}: {content}\n")
-                    
-                    # Check for execution failures that should trigger debug agent
-                    if role == "executor" and ("execution failed" in content.lower() or "exitcode: 1" in content.lower()):
-                        execution_failed = True
-                        logger.warning("Detected execution failure, continuing chat for debug agent intervention")
-                        # Continue the chat to allow debug agent to handle the error
-                        continue
-                    
-                    # Check for completion indicators only if no execution failure
-                    if not execution_failed and any(marker in content.lower() for marker in [
-                        "test status: completed",
-                        "detailed report available at:",
-                        "has been successfully executed",
-                        "you can find the full test report at:"
-                    ]):
-                        test_completed = True
-                        logger.info("Found test completion marker")
-                        break
-            
-            if test_completed:
-                logger.info("Test execution completed successfully")
-                print("Test execution completed successfully. Terminating...")
-                return True
-            elif execution_failed:
-                logger.warning("Test execution failed, debug agent intervention required")
-                print("Test execution failed, continuing with debug agent...")
-                # Let the group chat continue with debug agent
-                return False
+            # Initiate chat based on mode
+            if use_group_chat:
+                chat_result = executor.initiate_chat(
+                    manager,
+                    message=test_message,
+                    max_turns=max_iterations
+                )
             else:
-                logger.warning("Test execution did not complete properly")
-                print("Test execution did not complete properly")
-                return False
+                chat_result = executor.initiate_chat(
+                    testing_agent,
+                    message=test_message,
+                    max_turns=max_iterations,
+                    summary_method="reflection_with_llm"
+                )
+            
+            return True
                 
         finally:
             # Stop runtime logging and print session info
