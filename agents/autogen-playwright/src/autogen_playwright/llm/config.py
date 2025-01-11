@@ -22,9 +22,9 @@ class LLMConfig:
     @classmethod
     def from_env(cls) -> 'LLMConfig':
         # Debug log all relevant environment variables
-        logger.info(f"Loading environment variables:")
-        logger.info(f"LLM_PROVIDER: {os.getenv('LLM_PROVIDER')}")
-        logger.info(f"LLM_MODEL: {os.getenv('LLM_MODEL')}")
+        logger.info(f"LOG:  Loading environment variables:")
+        logger.info(f"LOG:  LLM_PROVIDER: {os.getenv('LLM_PROVIDER')}")
+        logger.info(f"LOG:  LLM_MODEL: {os.getenv('LLM_MODEL')}")
         
         api_key = os.getenv('LLM_API_KEY')
         if not api_key:
@@ -48,5 +48,5 @@ class LLMConfig:
             max_total_tokens=max_total_tokens
         )
         
-        logger.info(f"Created config with provider: {config.provider}, model: {config.model}")
+        logger.info(f"LOG:  Created config with provider: {config.provider}, model: {config.model}")
         return config

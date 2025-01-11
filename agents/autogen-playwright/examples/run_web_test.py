@@ -1,9 +1,9 @@
 import os
 import logging
 from pathlib import Path
-from dotenv import load_dotenv
 import autogen
 from autogen_playwright.ops import print_session_summary, analyze_conversation
+from autogen_playwright.utils.common_utils import load_env_from_file
 
 # Configure logging
 logging.basicConfig(
@@ -11,28 +11,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-def find_env_file():
-    """Find the .env file in the project root"""
-    current_dir = Path.cwd()
-    
-    # First check in current directory
-    env_path = current_dir / '.env'
-    if env_path.exists():
-        return env_path
-        
-    # Then check in project root (up one level from examples)
-    project_root = current_dir.parent if current_dir.name == 'examples' else current_dir
-    env_path = project_root / '.env'
-    if env_path.exists():
-        return env_path
-        
-    # Finally check in parent directory
-    env_path = project_root.parent / '.env'
-    if env_path.exists():
-        return env_path
-        
-    raise FileNotFoundError("Could not find .env file in project directories")
 
 def run_test(test_steps=None):
     try:
@@ -43,7 +21,7 @@ def run_test(test_steps=None):
         
         # Create agents with loaded environment
         use_group_chat = os.getenv('USE_GROUP_CHAT', 'true').lower() == 'true'
-        logger.info(f"Using group chat mode: {use_group_chat}")
+        logger.info(f"LOG:  Using group chat mode: {use_group_chat}")
         
         agents = create_web_testing_agents(use_group_chat=use_group_chat)
         
@@ -61,7 +39,7 @@ def run_test(test_steps=None):
             "create_table": True
         }
         logging_session_id = autogen.runtime_logging.start(config=logging_config)
-        logger.info(f"Started autogen runtime logging with session ID: {logging_session_id}")
+        logger.info(f"LOG:  Started autogen runtime logging with session ID: {logging_session_id}")
         
         # Default test steps if none provided
         default_steps = [
@@ -116,7 +94,7 @@ def run_test(test_steps=None):
         finally:
             # Stop runtime logging and print session info
             autogen.runtime_logging.stop()
-            logger.info(f"Stopped autogen runtime logging for session {logging_session_id}")
+            logger.info(f"LOG:  Stopped autogen runtime logging for session {logging_session_id}")
             
             # Print analytics
             print("\n=== Test Analytics ===")
@@ -130,15 +108,14 @@ def run_test(test_steps=None):
 
 if __name__ == "__main__":
     try:
-        # Find and load the correct .env file
-        env_path = find_env_file()
-        load_dotenv(dotenv_path=env_path, override=True)
+        # Load environment variables
+        env_path = load_env_from_file()
         
-        logger.info(f"Environment loaded from: {env_path}")
-        logger.info(f"Current working directory: {os.getcwd()}")
-        logger.info(f"Environment variables after loading:")
-        logger.info(f"LLM_PROVIDER: {os.getenv('LLM_PROVIDER')}")
-        logger.info(f"LLM_MODEL: {os.getenv('LLM_MODEL')}")
+        logger.info(f"LOG:  Environment loaded from: {env_path}")
+        logger.info(f"LOG:  Current working directory: {os.getcwd()}")
+        logger.info(f"LOG:  Environment variables after loading:")
+        logger.info(f"LOG:  LLM_PROVIDER: {os.getenv('LLM_PROVIDER')}")
+        logger.info(f"LOG:  LLM_MODEL: {os.getenv('LLM_MODEL')}")
         
         # Example of how to pass custom steps
         custom_steps = os.getenv('TEST_STEPS')

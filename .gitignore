@@ -161,3 +161,5 @@ cython_debug/
 .vscode/
 agents/autogen-playwright/runtime_logs/autogen_logs.db
 agents/.claudesync/config.local.json
+agents/autogen-playwright/logs.db
+agents/autogen-playwright/agent_conversations.db

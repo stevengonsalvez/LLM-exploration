@@ -33,7 +33,7 @@ class LogAnalyzer:
             rows = cursor.fetchall()
             column_names = [description[0] for description in cursor.description]
             data = [dict(zip(column_names, row)) for row in rows]
-            logger.info(f"Retrieved {len(data)} records from {table}")
+            logger.info(f"LOG:  Retrieved {len(data)} records from {table}")
             con.close()
             return data
         except sqlite3.OperationalError as e:
@@ -83,7 +83,7 @@ class LogAnalyzer:
             if "time" in df.columns:
                 df["timestamp"] = pd.to_datetime(df["time"])
             
-            logger.info(f"Processed {len(df)} rows with token and content extraction")
+            logger.info(f"LOG:  Processed {len(df)} rows with token and content extraction")
             
         return df
     
@@ -99,7 +99,7 @@ class LogAnalyzer:
         
         if session_id and not df.empty and "session_id" in df.columns:
             df = df[df["session_id"] == session_id]
-            logger.info(f"Analyzing session {session_id} with {len(df)} messages")
+            logger.info(f"LOG:  Analyzing session {session_id} with {len(df)} messages")
             
         # Calculate costs (using OpenAI's pricing for GPT-4)
         prompt_cost = (df["prompt_tokens"].sum() if not df.empty else 0) * 0.03 / 1000  # $0.03 per 1k tokens
@@ -139,7 +139,7 @@ class LogAnalyzer:
         # Filter by session if column exists
         if "session_id" in df.columns:
             df = df[df["session_id"] == session_id]
-            logger.info(f"Found {len(df)} messages for session {session_id}")
+            logger.info(f"LOG:  Found {len(df)} messages for session {session_id}")
         else:
             logger.warning("Session ID column missing from logs")
             

@@ -19,13 +19,13 @@ class LoggedCache(Cache):
     def get(self, key: str) -> Optional[Dict]:
         result = super().get(key)
         if result is not None:
-            self.logger.info(f"Cache HIT for key: {key[:50]}...")
+            self.logger.info(f"LOG:  Cache HIT for key: {key[:50]}...")
         else:
-            self.logger.info(f"Cache MISS for key: {key[:50]}...")
+            self.logger.info(f"LOG:  Cache MISS for key: {key[:50]}...")
         return result
 
     def put(self, key: str, value: Dict):
-        self.logger.info(f"Caching response for key: {key[:50]}...")
+        self.logger.info(f"LOG:  Caching response for key: {key[:50]}...")
         return super().put(key, value)
 
 class LLMProvider:
@@ -33,7 +33,7 @@ class LLMProvider:
         self.config = config or LLMConfig.from_env()
         self._set_provider_env_vars()
         self.logger = logging.getLogger(__name__)
-        self.logger.info(f"Initializing LLM with provider: {self.config.provider}, model: {self.config.model}")
+        self.logger.info(f"LOG:  Initializing LLM with provider: {self.config.provider}, model: {self.config.model}")
         
     def _set_provider_env_vars(self):
         """Map LLM_API_KEY to provider-specific environment variables"""
@@ -57,11 +57,11 @@ class LLMProvider:
             cache_kwargs = {}
             if self.config.cache_path:
                 cache_kwargs['cache_path_root'] = self.config.cache_path
-                self.logger.info(f"Using cache path: {self.config.cache_path}")
+                self.logger.info(f"LOG:  Using cache path: {self.config.cache_path}")
             base_config["cache"] = LoggedCache.disk(**cache_kwargs)
             if self.config.cache_seed is not None:
                 base_config["cache_seed"] = self.config.cache_seed
-                self.logger.info(f"Using cache seed: {self.config.cache_seed}")
+                self.logger.info(f"LOG:  Using cache seed: {self.config.cache_seed}")
         else:
             self.logger.warning("Cache is disabled!")
         

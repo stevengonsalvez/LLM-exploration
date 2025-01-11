@@ -18,7 +18,7 @@ def is_test_complete(msg: dict) -> bool:
         return False
     
     content = content.lower()
-    logger.info(f"Checking message content: {content[:100]}...")
+    logger.info(f"LOG :Checking message content: {content[:100]}...")
     # Only terminate after the TestReport summary
     return "you can find the full test report at:" in content
 
@@ -117,7 +117,7 @@ class ConversationMonitor:
                     usage = response["usage"]
                     tokens = usage.get("total_tokens", 0)
                     self.total_tokens += tokens
-                    logger.info(f"Total tokens used: {self.total_tokens}")
+                    logger.info(f"LOG :Total tokens used: {self.total_tokens}")
                     
                     if self.max_total_tokens and self.total_tokens >= self.max_total_tokens:
                         logger.error(f"Terminating due to token limit: {self.total_tokens} >= {self.max_total_tokens}")
@@ -233,7 +233,7 @@ def create_web_testing_agents(use_group_chat: bool = True) -> Union[Tuple[Assist
             Tuple[AssistantAgent, UserProxyAgent]
     """
     llm_config = LLMProvider().get_config()
-    logger.info(f"Creating agents with config: {llm_config}")
+    logger.info(f"LOG :Creating agents with config: {llm_config}")
     
     # Create conversation monitor
     monitor = ConversationMonitor(
