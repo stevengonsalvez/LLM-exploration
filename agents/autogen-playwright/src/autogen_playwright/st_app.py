@@ -14,12 +14,40 @@ from autogen import AssistantAgent, UserProxyAgent
 # setup page title and description
 st.set_page_config(page_title="AutoGen Chat app", page_icon="🤖", layout="wide")
 
-st.markdown("Adapted from [this example](https://github.com/sugarforever/autogen-streamlit)")
-st.markdown(
-    "This is a demo of AutoGen chat agents. You can use it to chat with OpenAI's GPT-3 and GPT-4 models. They are able to execute commands, answer questions, and even write code."
-)
-st.markdown("An example a question you can ask is: 'How is the S&P 500 doing today? Summarize the news for me.'")
-st.markdown("Start by getting an API key from OpenAI. You can get one [here](https://openai.com/pricing).")
+# Add custom CSS for the chat container
+st.markdown("""
+    <style>
+    .chat-container {
+        height: 600px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown("🤖 **Synthetic Testing Agent**")
+st.markdown("""
+This is an automated testing agent that converts plain English instructions into executable test steps. 
+
+Format your test steps either:
+- One step per line
+- As comma-separated steps
+
+Examples:
+```
+go to google.com, search for playwright, click first result
+
+OR
+
+go to google.com
+search for playwright
+click first result
+```
+""")
+st.markdown("Start by providing your OpenAI API key in the sidebar →")
 
 
 class TrackableAssistantAgent(AssistantAgent):
@@ -30,8 +58,9 @@ class TrackableAssistantAgent(AssistantAgent):
     """
 
     def _process_received_message(self, message, sender, silent):
-        with st.chat_message(sender.name):
-            st.markdown(message)
+        with chat_history:
+            with st.chat_message(sender.name):
+                st.markdown(message)
         return super()._process_received_message(message, sender, silent)
 
 
@@ -43,8 +72,9 @@ class TrackableUserProxyAgent(UserProxyAgent):
     """
 
     def _process_received_message(self, message, sender, silent):
-        with st.chat_message(sender.name):
-            st.markdown(message)
+        with chat_history:
+            with st.chat_message(sender.name):
+                st.markdown(message)
         return super()._process_received_message(message, sender, silent)
 
 
@@ -63,10 +93,22 @@ with st.sidebar:
     selected_key = st.text_input("API Key", type="password")
 
 # setup main area: user input and chat messages
-with st.container():
-    user_input = st.text_input("User Input")
-    # only run if user input is not empty and model and key are selected
-    if user_input:
+chat_container = st.container()
+with chat_container:
+    # Create a container for the chat history with a fixed height
+    chat_history = st.container()
+    
+    # Add a horizontal line to separate chat and input
+    st.markdown("---")
+    
+    # Create the input area at the bottom
+    user_input = st.text_area("Your message", height=100, key="user_input")
+    
+    # Add a submit button
+    if st.button("Send", type="primary"):
+        if not user_input:  # Skip if user input is empty
+            st.stop()
+            
         if not selected_key or not selected_model:
             st.warning("You must provide valid OpenAI API key and choose preferred model", icon="⚠️")
             st.stop()
