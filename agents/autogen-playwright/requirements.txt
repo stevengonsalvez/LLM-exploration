@@ -7,6 +7,9 @@ pandas>=2.0.0
 cerebras_cloud_sdk>=0.1.0
 streamlit>=1.31.0
 
+# Install local package
+-e .
+
 # Development dependencies
 pytest>=7.0.0
 black>=23.0.0
