@@ -1,0 +1,8 @@
+# Example usage
+from autogen_playwright.agents import testing_agent, user_proxy
+
+# Initialize chat
+user_proxy.initiate_chat(
+    testing_agent,
+    message="Test the login page at example.com"
+) 
