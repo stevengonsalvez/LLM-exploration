@@ -19,6 +19,7 @@ from autogen import AssistantAgent, UserProxyAgent, get_config_list
 import os
 import logging
 import autogen.runtime_logging
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,23 @@ logging_config = {
 }
 logging_session_id = autogen.runtime_logging.start(config=logging_config)
 logger.info(f"Started autogen runtime logging with session ID: {logging_session_id}")
+
+# Create a custom temporary directory
+TEMP_DIR = Path("./temp")
+TEMP_DIR.mkdir(exist_ok=True)
+logger.info(f"Created temporary directory at {TEMP_DIR}")
+
+def cleanup_temp_files():
+    """Clean up temporary files after execution"""
+    try:
+        for file in TEMP_DIR.glob("*"):
+            try:
+                file.unlink()
+                logger.debug(f"Deleted temporary file: {file}")
+            except Exception as e:
+                logger.warning(f"Failed to delete {file}: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to cleanup temp directory: {e}")
 
 # Add custom CSS for the chat container
 st.markdown("""
@@ -152,7 +170,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("Test Configuration")
-    max_turns = st.slider("Maximum Conversation Turns", min_value=1, max_value=10, value=3)
+    max_turns = st.slider("Maximum Conversation Turns", min_value=1, max_value=10, value=5)
     max_replies = st.slider("Maximum Consecutive Auto-Replies", min_value=1, max_value=5, value=2)
 
 # setup main area: user input and chat messages
@@ -293,7 +311,9 @@ with chat_container:
                 llm_config=llm_config,
                 is_termination_msg=lambda x: x.get("content", "").strip().endswith("TERMINATE") or any(phrase in x.get("content", "") for phrase in ["Test Summary", "If you have any further questions", "The execution succeeded"]),
                 code_execution_config={
-                    "use_docker": False
+                    "use_docker": False,
+                    "work_dir": str(TEMP_DIR),
+                    "last_n_messages": 3
                 }
             )
 
@@ -311,85 +331,89 @@ with chat_container:
                     st.session_state.should_stop = False
 
                 async def initiate_chat():
-                    await user_proxy.a_initiate_chat(
-                        assistant,
-                        message=steps_formatted,
-                        max_consecutive_auto_reply=max_replies,
-                        max_turns=max_turns,
-                        is_termination_msg=lambda x: (
-                            st.session_state.should_stop or 
-                            x.get("content", "").strip().endswith("TERMINATE") or 
-                            any(phrase in x.get("content", "") for phrase in ["Test Summary", "The execution succeeded"])
-                        ),
-                    )
-                    
-                    # Get and display token usage statistics using LogAnalyzer
-                    log_analyzer = LogAnalyzer(str(db_path))
-                    stats = log_analyzer.get_session_stats(logging_session_id)
-                    
-                    if stats:
-                        st.sidebar.markdown("---")
-                        st.sidebar.header("Token Usage Stats")
-                        st.sidebar.markdown(f"💰 Total Cost: ${stats['total_cost']}")
-                        st.sidebar.markdown(f"🔤 Total Tokens: {stats['total_tokens']}")
-                        st.sidebar.markdown(f"📤 Prompt Tokens: {stats['prompt_tokens']}")
-                        st.sidebar.markdown(f"📥 Completion Tokens: {stats['completion_tokens']}")
-                        st.sidebar.markdown(f"📊 Average Tokens/Request: {stats['average_tokens_per_request']}")
-                        st.sidebar.markdown(f"📝 Total Requests: {stats['request_count']}")
-                    
-                    # Get conversation flow to extract the test report
-                    conversation = log_analyzer.get_conversation_flow(logging_session_id)
-                    if not conversation.empty:
-                        # Find messages containing Test Summary or execution success
-                        report_messages = conversation[
-                            conversation['response_content'].str.contains(
-                                'Test Summary|The execution succeeded|test scenario completed', 
-                                case=False, 
-                                na=False
-                            )
-                        ]
+                    try:
+                        await user_proxy.a_initiate_chat(
+                            assistant,
+                            message=steps_formatted,
+                            max_consecutive_auto_reply=max_replies,
+                            max_turns=max_turns,
+                            is_termination_msg=lambda x: (
+                                st.session_state.should_stop or 
+                                x.get("content", "").strip().endswith("TERMINATE") or 
+                                any(phrase in x.get("content", "") for phrase in ["Test Summary", "The execution succeeded"])
+                            ),
+                        )
                         
-                        if not report_messages.empty:
-                            with report_tab:
-                                st.markdown("## Test Execution Report")
-                                # Get the last report message
-                                report_content = report_messages.iloc[-1]['response_content']
-                                
-                                # Format the report content
-                                if "```" in report_content:
-                                    # If there's a code block, preserve it
-                                    st.markdown(report_content)
-                                else:
-                                    # Otherwise, format with markdown
-                                    st.markdown(f"""
-                                    {report_content}
-                                    """)
-                                
-                                # Find the latest report directory
-                                reports_dir = Path("reports")
-                                if reports_dir.exists():
-                                    run_dirs = sorted(list(reports_dir.glob("run_*")), reverse=True)
-                                    if run_dirs:
-                                        latest_run = run_dirs[0]
-                                        # Display screenshots from the run directory
-                                        screenshots = list(latest_run.glob("*.png"))
-                                        if screenshots:
-                                            st.markdown("## Test Screenshots")
-                                            # Sort screenshots by creation time
-                                            screenshots.sort(key=lambda x: x.stat().st_mtime)
-                                            # Create columns for screenshots
-                                            cols = st.columns(2)
-                                            for idx, screenshot in enumerate(screenshots):
-                                                with cols[idx % 2]:
-                                                    st.image(
-                                                        str(screenshot),
-                                                        caption=f"Step: {screenshot.stem}",
-                                                        use_column_width=True
-                                                    )
-                                        else:
-                                            st.info("No screenshots were captured during this test run")
+                        # Get and display token usage statistics using LogAnalyzer
+                        log_analyzer = LogAnalyzer(str(db_path))
+                        stats = log_analyzer.get_session_stats(logging_session_id)
+                        
+                        if stats:
+                            st.sidebar.markdown("---")
+                            st.sidebar.header("Token Usage Stats")
+                            st.sidebar.markdown(f"💰 Total Cost: ${stats['total_cost']}")
+                            st.sidebar.markdown(f"🔤 Total Tokens: {stats['total_tokens']}")
+                            st.sidebar.markdown(f"📤 Prompt Tokens: {stats['prompt_tokens']}")
+                            st.sidebar.markdown(f"📥 Completion Tokens: {stats['completion_tokens']}")
+                            st.sidebar.markdown(f"📊 Average Tokens/Request: {stats['average_tokens_per_request']}")
+                            st.sidebar.markdown(f"📝 Total Requests: {stats['request_count']}")
+                        
+                        # Get conversation flow to extract the test report
+                        conversation = log_analyzer.get_conversation_flow(logging_session_id)
+                        if not conversation.empty:
+                            # Find messages containing Test Summary or execution success
+                            report_messages = conversation[
+                                conversation['response_content'].str.contains(
+                                    'Test Summary|The execution succeeded|test scenario completed', 
+                                    case=False, 
+                                    na=False
+                                )
+                            ]
+                            
+                            if not report_messages.empty:
+                                with report_tab:
+                                    st.markdown("## Test Execution Report")
+                                    # Get the last report message
+                                    report_content = report_messages.iloc[-1]['response_content']
+                                    
+                                    # Format the report content
+                                    if "```" in report_content:
+                                        # If there's a code block, preserve it
+                                        st.markdown(report_content)
+                                    else:
+                                        # Otherwise, format with markdown
+                                        st.markdown(f"""
+                                        {report_content}
+                                        """)
+                                    
+                                    # Find the latest report directory
+                                    reports_dir = Path("reports")
+                                    if reports_dir.exists():
+                                        run_dirs = sorted(list(reports_dir.glob("run_*")), reverse=True)
+                                        if run_dirs:
+                                            latest_run = run_dirs[0]
+                                            # Display screenshots from the run directory
+                                            screenshots = list(latest_run.glob("*.png"))
+                                            if screenshots:
+                                                st.markdown("## Test Screenshots")
+                                                # Sort screenshots by creation time
+                                                screenshots.sort(key=lambda x: x.stat().st_mtime)
+                                                # Create columns for screenshots
+                                                cols = st.columns(2)
+                                                for idx, screenshot in enumerate(screenshots):
+                                                    with cols[idx % 2]:
+                                                        st.image(
+                                                            str(screenshot),
+                                                            caption=f"Step: {screenshot.stem}",
+                                                            use_column_width=True
+                                                        )
+                                            else:
+                                                st.info("No screenshots were captured during this test run")
                     
-                    st.stop()  # Stop code execution after termination command
+                    finally:
+                        # Clean up temporary files
+                        cleanup_temp_files()
+                        logger.info("Cleaned up temporary files")
 
                 # Run the asynchronous function within the event loop
                 loop.run_until_complete(initiate_chat())
