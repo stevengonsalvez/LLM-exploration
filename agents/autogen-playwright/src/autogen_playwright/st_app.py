@@ -361,22 +361,29 @@ with chat_container:
                                     {report_content}
                                     """)
                                 
-                                # Display screenshots if they exist
-                                screenshots_dir = Path("screenshots")
-                                if screenshots_dir.exists():
-                                    st.markdown("## Test Screenshots")
-                                    screenshots = list(screenshots_dir.glob("*.png"))
-                                    if screenshots:
-                                        # Sort screenshots by creation time
-                                        screenshots.sort(key=lambda x: x.stat().st_mtime)
-                                        for screenshot in screenshots:
-                                            st.image(
-                                                str(screenshot), 
-                                                caption=f"Step: {screenshot.stem}", 
-                                                use_column_width=True
-                                            )
-                                    else:
-                                        st.info("No screenshots were captured during this test run")
+                                # Find the latest report directory
+                                reports_dir = Path("reports")
+                                if reports_dir.exists():
+                                    run_dirs = sorted(list(reports_dir.glob("run_*")), reverse=True)
+                                    if run_dirs:
+                                        latest_run = run_dirs[0]
+                                        # Display screenshots from the run directory
+                                        screenshots = list(latest_run.glob("*.png"))
+                                        if screenshots:
+                                            st.markdown("## Test Screenshots")
+                                            # Sort screenshots by creation time
+                                            screenshots.sort(key=lambda x: x.stat().st_mtime)
+                                            # Create columns for screenshots
+                                            cols = st.columns(2)
+                                            for idx, screenshot in enumerate(screenshots):
+                                                with cols[idx % 2]:
+                                                    st.image(
+                                                        str(screenshot),
+                                                        caption=f"Step: {screenshot.stem}",
+                                                        use_column_width=True
+                                                    )
+                                        else:
+                                            st.info("No screenshots were captured during this test run")
                     
                     st.stop()  # Stop code execution after termination command
 
