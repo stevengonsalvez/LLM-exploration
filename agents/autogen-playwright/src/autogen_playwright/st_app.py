@@ -119,7 +119,7 @@ with st.sidebar:
     llm_provider = st.selectbox("Provider", ["OpenAI", "Anthropic", "Cerebras"], index=0)
     
     if llm_provider == "OpenAI":
-        selected_model = st.selectbox("Model", ["gpt-3.5-turbo", "gpt-4-1106-preview", "gpt-4o"], index=1)
+        selected_model = st.selectbox("Model", ["gpt-3.5-turbo", "gpt-4-1106-preview"], index=1)
         st.markdown("Press enter to save key")
         st.markdown(
             "For more information about the models, see [here](https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo)."
@@ -145,6 +145,11 @@ with st.sidebar:
         selected_key = st.text_input("Cerebras API Key", type="password")
         # Set environment variable for Cerebras
         os.environ["CEREBRAS_API_KEY"] = selected_key
+
+    st.markdown("---")
+    st.header("Test Configuration")
+    max_turns = st.slider("Maximum Conversation Turns", min_value=1, max_value=10, value=3)
+    max_replies = st.slider("Maximum Consecutive Auto-Replies", min_value=1, max_value=5, value=2)
 
 # setup main area: user input and chat messages
 chat_container = st.container()
@@ -209,8 +214,21 @@ with chat_container:
         # Add a horizontal line to separate chat and input
         st.markdown("---")
         
-        # Create the input area at the bottom
-        user_input = st.text_area("Your message", height=100, key="user_input")
+        # Create two columns for input and stop button
+        input_col, button_col = st.columns([4, 1])
+        with input_col:
+            # Create the input area at the bottom
+            user_input = st.text_area("Your message", height=100, key="user_input")
+        with button_col:
+            st.markdown("<br>", unsafe_allow_html=True)  # Add some spacing
+            if st.button("🛑 Stop", type="secondary", use_container_width=True):
+                st.session_state.should_stop = True
+                st.rerun()
+        
+        # Add the send button below the input
+        send_col1, send_col2, send_col3 = st.columns([1.5, 1, 1.5])
+        with send_col2:
+            send_pressed = st.button("Send", type="primary", use_container_width=True)
         
         # Split input either by commas or newlines
         if "," in user_input:
@@ -220,10 +238,8 @@ with chat_container:
         
         steps_formatted = "\n".join(f"{i+1}. {step}" for i, step in enumerate(steps))
         
-
-        
-        # Add a submit button
-        if st.button("Send", type="primary"):
+        # Process input when send is pressed
+        if send_pressed:
             if not user_input:  # Skip if user input is empty
                 st.stop()
             
@@ -286,14 +302,21 @@ with chat_container:
                 st.session_state.chat_initiated = False  # Initialize the session state
 
             if not st.session_state.chat_initiated:
+                # Initialize should_stop state if not exists
+                if 'should_stop' not in st.session_state:
+                    st.session_state.should_stop = False
 
                 async def initiate_chat():
                     await user_proxy.a_initiate_chat(
                         assistant,
                         message=steps_formatted,
-                        max_consecutive_auto_reply=2,
-                        max_turns=3,
-                        is_termination_msg=lambda x: x.get("content", "").strip().endswith("TERMINATE") or any(phrase in x.get("content", "") for phrase in ["Test Summary", "The execution succeeded"]),
+                        max_consecutive_auto_reply=max_replies,
+                        max_turns=max_turns,
+                        is_termination_msg=lambda x: (
+                            st.session_state.should_stop or 
+                            x.get("content", "").strip().endswith("TERMINATE") or 
+                            any(phrase in x.get("content", "") for phrase in ["Test Summary", "The execution succeeded"])
+                        ),
                     )
                     
                     # Get and display token usage statistics using LogAnalyzer

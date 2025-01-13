@@ -34,7 +34,7 @@ class PlaywrightSkill:
         
         # Launch browser in headed mode with slower execution for visibility
         self.browser = playwright.chromium.launch(
-            headless=False,  # Show the browser
+            headless=True,  # Show the browser
             slow_mo=self.slow_mo  # Add delay between actions for visibility
         )
         
