@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 # setup page title and description
 st.set_page_config(page_title="AutoGen Chat app", page_icon="🤖", layout="wide")
 
+# Add warning banner
+st.warning("⚠️ This Streamlit interface is only for demonstration purposes", icon="⚠️")
+
 # Setup AutoGen Runtime Logging with SQLite
 db_path = Path("runtime_logs/autogen_logs.db")
 db_path.parent.mkdir(exist_ok=True)
@@ -51,6 +54,7 @@ with st.expander("How to use the Testing Agent", expanded=False):
     st.markdown("""
     This is an automated testing agent that converts plain English instructions into executable test steps. 
 
+    **Writing Test Steps:**
     Format your test steps either:
     - One step per line
     - As comma-separated steps
@@ -65,6 +69,14 @@ with st.expander("How to use the Testing Agent", expanded=False):
     search for playwright
     click first result
     ```
+
+    **Viewing Test Reports:**
+    - Switch to the "Test Report" tab after test execution
+    - Use the dropdown to select a specific test run (format: YYYYMMDD_HHMMSS)
+    - Click "Load Report" to view:
+        - Detailed test execution report
+        - Screenshots captured during the test
+        - Step-by-step results
     """)
 st.markdown("Start by providing your OpenAI API key in the sidebar →")
 
@@ -153,7 +165,7 @@ with chat_container:
                         "Select Test Run",
                         run_options,
                         index=0,
-                        format_func=lambda x: f"Run {x.split('_')[1]}"
+                        format_func=lambda x: f"Run {x.split('_')[1]}_{x.split('_')[2]}"
                     )
                 with col2:
                     load_report = st.button("🔄 Load Report", type="primary", use_container_width=True)
