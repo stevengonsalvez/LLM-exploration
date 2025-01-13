@@ -5,16 +5,20 @@ UserProxyAgent is used to send messages to the AssistantAgent. The AssistantAgen
 
 """
 
+import sys
+from pathlib import Path
 
-from autogen_playwright.prompts.prompts import WEB_TESTER_PROMPT
+# Add the parent directory to sys.path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+from src.autogen_playwright.prompts.prompts import WEB_TESTER_PROMPT
+from src.autogen_playwright.ops.log_analyzer import LogAnalyzer
 import streamlit as st
 import asyncio
 from autogen import AssistantAgent, UserProxyAgent, get_config_list
 import os
-from pathlib import Path
-import autogen.runtime_logging
 import logging
-from autogen_playwright.ops.log_analyzer import LogAnalyzer
+import autogen.runtime_logging
 
 logger = logging.getLogger(__name__)
 
