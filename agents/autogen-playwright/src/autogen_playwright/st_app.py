@@ -173,6 +173,17 @@ with st.sidebar:
     max_turns = st.slider("Maximum Conversation Turns", min_value=1, max_value=10, value=5)
     max_replies = st.slider("Maximum Consecutive Auto-Replies", min_value=1, max_value=5, value=2)
 
+def get_reports_dir() -> Path:
+    """Get the reports directory relative to this script's location"""
+    # Get the directory containing the script
+    script_dir = Path(__file__).parent
+    # Go up to the project root (autogen-playwright)
+
+    project_root = script_dir.parent.parent
+
+    print(project_root)
+    return project_root / "reports"
+
 # setup main area: user input and chat messages
 chat_container = st.container()
 with chat_container:
@@ -181,7 +192,7 @@ with chat_container:
     
     with report_tab:
         # Add run selector and load button
-        reports_dir = Path("reports")
+        reports_dir = get_reports_dir()
         if reports_dir.exists():
             run_dirs = sorted(list(reports_dir.glob("run_*")), reverse=True)
             if run_dirs:
@@ -387,7 +398,7 @@ with chat_container:
                                         """)
                                     
                                     # Find the latest report directory
-                                    reports_dir = Path("reports")
+                                    reports_dir = get_reports_dir()
                                     if reports_dir.exists():
                                         run_dirs = sorted(list(reports_dir.glob("run_*")), reverse=True)
                                         if run_dirs:
