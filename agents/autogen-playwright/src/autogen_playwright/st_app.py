@@ -9,20 +9,6 @@ import sys
 from pathlib import Path
 import subprocess
 
-@st.cache_resource
-def install_playwright():
-    """Install Playwright browsers if not already installed"""
-    try:
-        subprocess.run(
-            ["playwright", "install", "chromium"],
-            check=True,
-            capture_output=True
-        )
-        return True
-    except subprocess.CalledProcessError as e:
-        st.error(f"Failed to install Playwright browsers: {e.stderr.decode()}")
-        return False
-
 # Add the parent directory to sys.path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -42,8 +28,14 @@ logger = logging.getLogger(__name__)
 st.set_page_config(page_title="AutoGen Chat app", page_icon="🤖", layout="wide")
 
 # Install Playwright browsers
-if not install_playwright():
-    st.error("Failed to install Playwright browsers. The app may not work correctly.")
+try:
+    subprocess.run(
+        ["playwright", "install", "chromium"],
+        check=True,
+        capture_output=True
+    )
+except subprocess.CalledProcessError as e:
+    st.error(f"Failed to install Playwright browsers: {e.stderr.decode()}")
     st.stop()
 
 # Add warning banner
