@@ -1,6 +1,4 @@
 chromium
 chromium-driver
-xvfb
-libgconf-2-4
-docker.io
-docker-compose 
+firefox-esr
+webkit2gtk-4.0 
