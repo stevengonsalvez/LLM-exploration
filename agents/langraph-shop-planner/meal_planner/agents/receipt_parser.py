@@ -5,13 +5,12 @@ from pdf2image import convert_from_path
 import re
 from datetime import datetime
 from langchain.prompts import ChatPromptTemplate
-from langgraph.graph import Graph, StateGraph
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import Graph, StateGraph, END
 from langgraph.prebuilt.tool_executor import ToolExecutor
 from langgraph.checkpoint.memory import MemorySaver
 
-from ..core.schemas.base import (
-    Receipt, FoodItem, FoodCategory, ReceiptParserState
-)
+from ..core.schemas.state import ReceiptParserMessagesState
 from ..core.llm.base import BaseLLM
 
 class ReceiptParserAgent:
@@ -38,11 +37,6 @@ class ReceiptParserAgent:
                 "name": "extract_text_from_pdf",
                 "description": "Extract text from a PDF file",
                 "func": self._extract_text_from_pdf,
-            },
-            {
-                "name": "parse_items",
-                "description": "Parse items from receipt text",
-                "func": self._parse_items,
             }
         ]
     
@@ -66,15 +60,15 @@ class ReceiptParserAgent:
         except Exception as e:
             raise Exception(f"Failed to extract text from PDF: {str(e)}")
     
-    async def _parse_items(self, text: str) -> Tuple[List[FoodItem], Dict[str, float]]:
-        """Parse items from receipt text using LLM."""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert receipt parser following the ReACT framework.
+    async def _process_text(self, state: ReceiptParserMessagesState, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Process text through LLM following ReACT framework."""
+        messages = [
+            SystemMessage(content="""You are an expert receipt parser following the ReACT framework.
             For each item in the receipt:
             1. Thought: Analyze the item text and identify key components
             2. Action: Extract the following information:
                - Name
-               - Category (from FoodCategory enum)
+               - Category
                - Quantity
                - Unit
                - Price
@@ -82,34 +76,27 @@ class ReceiptParserAgent:
             4. Final Answer: Format as a JSON object
             
             Format the final output as a JSON list of items."""),
-            ("user", "{text}")
-        ])
+            HumanMessage(content=state.current_text)
+        ]
         
         response = await self.llm.generate(
-            prompt=prompt.format_messages(text=text)[0].content,
+            prompt="".join([m.content for m in messages]),
             temperature=0.3
         )
         
-        # Process LLM response and calculate confidence scores
-        items = []
-        confidence_scores = {}
-        
         try:
-            parsed = eval(response)  # Safe since we control the LLM output format
-            for item_data in parsed:
-                item = FoodItem(
-                    name=item_data["name"],
-                    category=FoodCategory(item_data["category"]),
-                    quantity=float(item_data["quantity"]),
-                    unit=item_data["unit"],
-                    price=float(item_data["price"])
-                )
-                items.append(item)
-                confidence_scores[item.name] = self._calculate_confidence(item_data)
+            parsed = eval(response)
+            state.extracted_items = parsed
+            state.confidence_scores = {
+                item["name"]: self._calculate_confidence(item)
+                for item in parsed
+            }
+            state.status = "items_parsed"
         except Exception as e:
-            raise Exception(f"Failed to parse items: {str(e)}")
+            state.error = str(e)
+            state.status = "failed"
         
-        return items, confidence_scores
+        return {"messages": messages}
     
     def _calculate_confidence(self, item_data: Dict) -> float:
         """Calculate confidence score for parsed item."""
@@ -126,120 +113,122 @@ class ReceiptParserAgent:
     
     def _create_graph(self) -> Graph:
         """Create the receipt parser graph following ReACT framework."""
-        workflow = StateGraph(ReceiptParserState)
+        workflow = StateGraph(ReceiptParserMessagesState)
         
-        # Define nodes based on ReACT framework
-        # 1. Observe: Extract text from receipt
-        workflow.add_node("observe", self._extract_text_node)
-        # 2. Think: Parse and analyze items
-        workflow.add_node("think", self._parse_items_node)
-        # 3. Act: Validate and decide on next action
-        workflow.add_node("act", self._validate_results_node)
+        # Define nodes
+        workflow.add_node("extract", self._extract_node)
+        workflow.add_node("process", self._process_text)
+        workflow.add_node("validate", self._validate_node)
         
         # Define edges
-        workflow.add_edge("observe", "think")
-        workflow.add_edge("think", "act")
+        workflow.add_edge("extract", "process")
+        workflow.add_edge("process", "validate")
         
-        # Add conditional edges for human validation
+        # Add conditional edges for validation
         workflow.add_conditional_edges(
-            "act",
-            self._needs_human_validation,
+            "validate",
+            self._needs_validation,
             {
-                True: "end",  # Requires human validation
-                False: "end"  # Automatically proceed
+                True: END,  # Requires human validation
+                False: END  # Automatically proceed
             }
         )
         
-        workflow.set_entry_point("observe")
+        workflow.set_entry_point("extract")
         return workflow.compile(checkpointer=self.memory)
     
-    async def _extract_text_node(self, state: ReceiptParserState) -> ReceiptParserState:
-        """Node for text extraction from image/PDF (Observe step)."""
+    async def _extract_node(self, state: ReceiptParserMessagesState, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract text from image/PDF."""
         try:
-            if state.current_receipt and state.current_receipt.image_path:
-                if state.current_receipt.image_path.endswith('.pdf'):
-                    text = await self.tool_executor.execute(
-                        "extract_text_from_pdf",
-                        {"pdf_path": state.current_receipt.image_path}
-                    )
-                else:
-                    text = await self.tool_executor.execute(
-                        "extract_text_from_image",
-                        {"image_path": state.current_receipt.image_path}
-                    )
-                
-                state.current_receipt.raw_text = text
-                state.step += 1
-                state.status = "text_extracted"
-            else:
-                state.error = "No image path provided"
-                state.status = "failed"
-        except Exception as e:
-            state.error = str(e)
-            state.status = "failed"
-        
-        return state
-    
-    async def _parse_items_node(self, state: ReceiptParserState) -> ReceiptParserState:
-        """Node for parsing items from text (Think step)."""
-        try:
-            if state.current_receipt and state.current_receipt.raw_text:
-                items, confidence_scores = await self.tool_executor.execute(
-                    "parse_items",
-                    {"text": state.current_receipt.raw_text}
+            image_path = config.get("image_path")
+            if not image_path:
+                raise ValueError("No image path provided")
+            
+            if image_path.endswith('.pdf'):
+                text = await self.tool_executor.execute(
+                    "extract_text_from_pdf",
+                    {"pdf_path": image_path}
                 )
-                
-                state.extracted_items = items
-                state.confidence_scores = confidence_scores
-                state.step += 1
-                state.status = "items_parsed"
             else:
-                state.error = "No raw text available"
-                state.status = "failed"
+                text = await self.tool_executor.execute(
+                    "extract_text_from_image",
+                    {"image_path": image_path}
+                )
+            
+            state.current_text = text
+            state.status = "text_extracted"
+            
+            return {
+                "messages": [
+                    SystemMessage(content="Text extracted successfully"),
+                    HumanMessage(content=text)
+                ]
+            }
+            
         except Exception as e:
             state.error = str(e)
             state.status = "failed"
-        
-        return state
+            return {
+                "messages": [
+                    SystemMessage(content=f"Error extracting text: {str(e)}")
+                ]
+            }
     
-    async def _validate_results_node(self, state: ReceiptParserState) -> ReceiptParserState:
-        """Node for validating parsed results (Act step)."""
+    async def _validate_node(self, state: ReceiptParserMessagesState, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate parsed results."""
         if not state.extracted_items:
-            state.requires_human_validation = True
+            state.requires_validation = True
             state.status = "needs_validation"
-            return state
+            return {
+                "messages": [
+                    SystemMessage(content="No items extracted, requires validation")
+                ]
+            }
         
         # Check confidence scores
         low_confidence_items = [
-            item.name for item in state.extracted_items
-            if state.confidence_scores.get(item.name, 0) < self.confidence_threshold
+            item["name"] for item in state.extracted_items
+            if state.confidence_scores.get(item["name"], 0) < self.confidence_threshold
         ]
         
         if low_confidence_items:
-            state.requires_human_validation = True
+            state.requires_validation = True
             state.metadata["low_confidence_items"] = low_confidence_items
             state.status = "needs_validation"
-        else:
-            state.requires_human_validation = False
-            state.status = "completed"
+            return {
+                "messages": [
+                    SystemMessage(content=f"Low confidence items found: {', '.join(low_confidence_items)}")
+                ]
+            }
         
-        state.step += 1
-        return state
+        state.requires_validation = False
+        state.status = "completed"
+        return {
+            "messages": [
+                SystemMessage(content="All items validated successfully")
+            ]
+        }
     
-    def _needs_human_validation(self, state: ReceiptParserState) -> bool:
+    def _needs_validation(self, state: ReceiptParserMessagesState) -> bool:
         """Determine if human validation is needed."""
-        return state.requires_human_validation
+        return state.requires_validation
     
-    async def process_receipt(self, image_path: str) -> ReceiptParserState:
+    async def process_receipt(self, image_path: str) -> Dict[str, Any]:
         """Process a receipt image/PDF and extract items."""
-        initial_state = ReceiptParserState(
+        config = {
+            "image_path": image_path,
+            "configurable": {
+                "thread_id": datetime.now().isoformat()
+            }
+        }
+        
+        initial_state = ReceiptParserMessagesState(
             agent_id="receipt_parser",
-            current_receipt=Receipt(
-                date=datetime.now(),
-                items=[],
-                total_amount=0.0,
-                image_path=image_path
-            )
+            messages=[]
         )
         
-        return await self.graph.arun(initial_state) 
+        return await self.graph.astream_events(
+            {"messages": initial_state.messages},
+            config,
+            version="v2"
+        ) 

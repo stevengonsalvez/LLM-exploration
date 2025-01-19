@@ -87,33 +87,55 @@ async def main():
         
         if uploaded_file:
             # Save uploaded file
-            file_path = f"uploads/{uploaded_file.name}"
-            os.makedirs("uploads", exist_ok=True)
+            file_path = os.path.join(settings.upload_dir, uploaded_file.name)
+            # Directory is created during app initialization via settings.ensure_directories()
             with open(file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             
             if st.button("Process Receipt"):
+                progress_placeholder = st.empty()
+                status_placeholder = st.empty()
+                
                 with st.spinner("Processing receipt..."):
-                    receipt_state = await st.session_state.app.process_receipt(file_path)
-                    
-                    if receipt_state.status == "completed":
-                        st.success("Receipt processed successfully!")
-                        st.write("Extracted Items:")
-                        for item in receipt_state.extracted_items:
-                            st.write(f"- {item.name}: {item.quantity} {item.unit}")
+                    # Stream the processing steps
+                    async for state in self.receipt_parser.graph.stream(
+                        ReceiptParserState(
+                            agent_id="receipt_parser",
+                            current_receipt=Receipt(
+                                date=datetime.now(),
+                                items=[],
+                                total_amount=0.0,
+                                image_path=file_path
+                            )
+                        )
+                    ):
+                        # Update progress based on step
+                        progress = (state.step / 3) * 100  # 3 steps total
+                        progress_placeholder.progress(int(progress))
                         
-                        if st.button("Add to Inventory"):
-                            inventory_state = await st.session_state.app.update_inventory(receipt_state.extracted_items)
-                            if inventory_state.status == "completed":
-                                st.success("Inventory updated successfully!")
-                    
-                    elif receipt_state.status == "needs_validation":
-                        st.warning("Some items need validation:")
-                        for item_name in receipt_state.metadata.get("low_confidence_items", []):
-                            st.write(f"- {item_name}")
-                    
-                    else:
-                        st.error(f"Error processing receipt: {receipt_state.error}")
+                        # Update status message
+                        if state.status == "text_extracted":
+                            status_placeholder.info("✓ Text extracted from receipt")
+                        elif state.status == "items_parsed":
+                            status_placeholder.info("✓ Items parsed from text")
+                        elif state.status == "completed":
+                            status_placeholder.success("✓ Processing completed")
+                            # Show results
+                            st.write("Extracted Items:")
+                            for item in state.extracted_items:
+                                st.write(f"- {item.name}: {item.quantity} {item.unit}")
+                            
+                            if st.button("Add to Inventory"):
+                                inventory_state = await st.session_state.app.update_inventory(state.extracted_items)
+                                if inventory_state.status == "completed":
+                                    st.success("Inventory updated successfully!")
+                        elif state.status == "needs_validation":
+                            status_placeholder.warning("Items need validation:")
+                            for item_name in state.metadata.get("low_confidence_items", []):
+                                st.write(f"- {item_name}")
+                        elif state.status == "failed":
+                            status_placeholder.error(f"Error: {state.error}")
+                            break
     
     elif page == "Inventory":
         st.header("Current Inventory")

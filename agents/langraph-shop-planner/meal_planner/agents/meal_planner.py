@@ -1,25 +1,21 @@
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
-from langchain.prompts import ChatPromptTemplate
-from langgraph.graph import Graph, StateGraph
+from datetime import datetime
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import Graph, StateGraph, END
 from langgraph.prebuilt.tool_executor import ToolExecutor
 from langgraph.checkpoint.memory import MemorySaver
 
-from ..core.schemas.base import (
-    FoodItem, Recipe, MealPlan, MealType, MealPlannerState
-)
+from ..core.schemas.state import MealPlannerMessagesState
 from ..core.llm.base import BaseLLM
 
 class MealPlannerAgent:
     def __init__(
         self,
         llm: BaseLLM,
-        min_meals_per_day: int = 3,
-        max_meals_per_day: int = 5
+        confidence_threshold: float = 0.8
     ):
         self.llm = llm
-        self.min_meals_per_day = min_meals_per_day
-        self.max_meals_per_day = max_meals_per_day
+        self.confidence_threshold = confidence_threshold
         self.tools = self._create_tools()
         self.tool_executor = ToolExecutor(self.tools)
         self.memory = MemorySaver()
@@ -28,276 +24,192 @@ class MealPlannerAgent:
     def _create_tools(self) -> List[Dict]:
         return [
             {
-                "name": "generate_recipes",
-                "description": "Generate recipes based on available ingredients",
-                "func": self._generate_recipes,
-            },
-            {
-                "name": "optimize_meal_plan",
-                "description": "Optimize meal plan for nutrition and variety",
-                "func": self._optimize_meal_plan,
+                "name": "generate_meal_plan",
+                "description": "Generate a meal plan based on available ingredients",
+                "func": self._generate_meal_plan,
             }
         ]
     
-    async def _generate_recipes(self, ingredients: List[FoodItem], meal_type: MealType) -> List[Recipe]:
-        """Generate recipes using available ingredients."""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a creative chef following the ReACT framework.
-            For each recipe:
-            1. Thought: Analyze available ingredients and meal type requirements
-            2. Action: Create a recipe considering:
+    async def _generate_meal_plan(self, ingredients: List[Dict], preferences: Dict) -> Dict[str, Any]:
+        """Generate a meal plan based on available ingredients and preferences."""
+        # Simulate meal plan generation
+        return {
+            "meal_plan": {
+                "breakfast": [],
+                "lunch": [],
+                "dinner": []
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    async def _process_ingredients(self, state: MealPlannerMessagesState, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Process ingredients through LLM following ReACT framework."""
+        messages = [
+            SystemMessage(content="""You are an expert meal planner following the ReACT framework.
+            For the available ingredients:
+            1. Thought: Analyze ingredients and dietary preferences
+            2. Action: Generate meal suggestions considering:
                - Nutritional balance
+               - Dietary restrictions
                - Cooking time
                - Ingredient combinations
-               - Dietary restrictions
-            3. Observation: Review recipe feasibility
-            4. Final Answer: Format recipe as a JSON object
+            3. Observation: Validate meal suggestions
+            4. Final Answer: Format as a JSON object with meal plans
             
-            Format each recipe with complete details."""),
-            ("user", "Ingredients: {ingredients}\nMeal Type: {meal_type}")
-        ])
-        
-        ingredients_str = "\n".join([
-            f"- {item.name}: {item.quantity} {item.unit}"
-            for item in ingredients
-        ])
+            Format the final output as a JSON object with breakfast, lunch, and dinner arrays."""),
+            HumanMessage(content=f"Ingredients: {state.available_ingredients}\nPreferences: {state.preferences}")
+        ]
         
         response = await self.llm.generate(
-            prompt=prompt.format_messages(
-                ingredients=ingredients_str,
-                meal_type=meal_type
-            )[0].content,
-            temperature=0.7
+            prompt="".join([m.content for m in messages]),
+            temperature=0.3
         )
         
-        # Parse LLM response into Recipe objects
-        recipes = []
         try:
-            parsed = eval(response)  # Safe since we control the LLM output format
-            for recipe_data in parsed:
-                recipe = Recipe(
-                    name=recipe_data["name"],
-                    meal_type=meal_type,
-                    ingredients=recipe_data["ingredients"],
-                    instructions=recipe_data["instructions"],
-                    prep_time=recipe_data["prep_time"],
-                    cook_time=recipe_data["cook_time"],
-                    servings=recipe_data["servings"],
-                    calories_per_serving=recipe_data.get("calories_per_serving"),
-                    nutritional_info=recipe_data.get("nutritional_info")
-                )
-                recipes.append(recipe)
+            parsed = eval(response)
+            state.meal_suggestions = parsed
+            state.confidence_scores = {
+                meal["name"]: self._calculate_confidence(meal)
+                for meals in parsed.values()
+                for meal in meals
+            }
+            state.status = "meals_suggested"
         except Exception as e:
-            raise Exception(f"Failed to parse recipes: {str(e)}")
+            state.error = str(e)
+            state.status = "failed"
         
-        return recipes
+        return {"messages": messages}
     
-    async def _optimize_meal_plan(self, recipes: List[Recipe], days: int) -> Dict[str, List[Recipe]]:
-        """Optimize meal plan for nutrition and variety."""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a meal planning expert following the ReACT framework.
-            For the meal plan:
-            1. Thought: Analyze available recipes and planning requirements
-            2. Action: Create an optimal meal plan considering:
-               - Nutritional balance across days
-               - Variety in meals
-               - Ingredient usage efficiency
-               - Dietary preferences and restrictions
-            3. Observation: Review plan feasibility
-            4. Final Answer: Format plan as a JSON object
-            
-            Format the plan with dates as keys and lists of recipe names as values."""),
-            ("user", "Recipes: {recipes}\nDays: {days}")
-        ])
+    def _calculate_confidence(self, meal_data: Dict) -> float:
+        """Calculate confidence score for meal suggestion."""
+        score = 1.0
+        required_fields = ["name", "ingredients", "cooking_time", "difficulty"]
         
-        recipes_str = "\n".join([
-            f"- {recipe.name} ({recipe.meal_type}): {recipe.calories_per_serving} cal/serving"
-            for recipe in recipes
-        ])
+        for field in required_fields:
+            if field not in meal_data or not meal_data[field]:
+                score *= 0.8
+            elif isinstance(meal_data[field], str) and len(meal_data[field].strip()) < 2:
+                score *= 0.9
         
-        response = await self.llm.generate(
-            prompt=prompt.format_messages(
-                recipes=recipes_str,
-                days=days
-            )[0].content,
-            temperature=0.5
-        )
-        
-        # Parse LLM response into meal plan
-        try:
-            meal_plan = eval(response)  # Safe since we control the LLM output format
-            optimized_plan = {}
-            
-            for date_str, recipe_names in meal_plan.items():
-                date_recipes = []
-                for name in recipe_names:
-                    recipe = next((r for r in recipes if r.name == name), None)
-                    if recipe:
-                        date_recipes.append(recipe)
-                optimized_plan[date_str] = date_recipes
-            
-            return optimized_plan
-            
-        except Exception as e:
-            raise Exception(f"Failed to optimize meal plan: {str(e)}")
+        return score
     
     def _create_graph(self) -> Graph:
         """Create the meal planning graph following ReACT framework."""
-        workflow = StateGraph(MealPlannerState)
+        workflow = StateGraph(MealPlannerMessagesState)
         
-        # Define nodes based on ReACT framework
-        # 1. Observe: Generate recipes from available ingredients
-        workflow.add_node("observe", self._generate_recipes_node)
-        # 2. Think: Create initial meal plan
-        workflow.add_node("think", self._create_meal_plan_node)
-        # 3. Act: Optimize and validate plan
-        workflow.add_node("act_optimize", self._optimize_plan_node)
-        workflow.add_node("act_validate", self._validate_plan_node)
+        # Define nodes
+        workflow.add_node("process", self._process_ingredients)
+        workflow.add_node("generate", self._generate_node)
+        workflow.add_node("validate", self._validate_node)
         
         # Define edges
-        workflow.add_edge("observe", "think")
-        workflow.add_edge("think", "act_optimize")
-        workflow.add_edge("act_optimize", "act_validate")
+        workflow.add_edge("process", "generate")
+        workflow.add_edge("generate", "validate")
         
-        workflow.set_entry_point("observe")
+        # Add conditional edges for validation
+        workflow.add_conditional_edges(
+            "validate",
+            self._needs_validation,
+            {
+                True: END,  # Requires human validation
+                False: END  # Automatically proceed
+            }
+        )
+        
+        workflow.set_entry_point("process")
         return workflow.compile(checkpointer=self.memory)
     
-    async def _generate_recipes_node(self, state: MealPlannerState) -> MealPlannerState:
-        """Node for generating recipes (Observe step)."""
+    async def _generate_node(self, state: MealPlannerMessagesState, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate meal plan from suggestions."""
         try:
-            all_recipes = []
-            for meal_type in MealType:
-                recipes = await self.tool_executor.execute(
-                    "generate_recipes",
-                    {
-                        "ingredients": state.available_ingredients,
-                        "meal_type": meal_type
-                    }
-                )
-                all_recipes.extend(recipes)
+            if not state.meal_suggestions:
+                raise ValueError("No meal suggestions to process")
             
-            state.metadata["generated_recipes"] = all_recipes
-            state.step += 1
-            state.status = "recipes_generated"
-            
-        except Exception as e:
-            state.error = str(e)
-            state.status = "failed"
-        
-        return state
-    
-    async def _create_meal_plan_node(self, state: MealPlannerState) -> MealPlannerState:
-        """Node for creating initial meal plan (Think step)."""
-        try:
-            if not state.metadata.get("generated_recipes"):
-                state.error = "No recipes available"
-                state.status = "failed"
-                return state
-            
-            days = (state.current_plan.end_date - state.current_plan.start_date).days + 1
-            optimized_plan = await self.tool_executor.execute(
-                "optimize_meal_plan",
+            result = await self.tool_executor.execute(
+                "generate_meal_plan",
                 {
-                    "recipes": state.metadata["generated_recipes"],
-                    "days": days
+                    "ingredients": state.available_ingredients,
+                    "preferences": state.preferences
                 }
             )
             
-            state.current_plan.meals = optimized_plan
-            state.step += 1
-            state.status = "plan_created"
+            state.meal_plan = result["meal_plan"]
+            state.status = "plan_generated"
+            
+            return {
+                "messages": [
+                    SystemMessage(content="Meal plan generated successfully"),
+                    HumanMessage(content=str(result))
+                ]
+            }
             
         except Exception as e:
             state.error = str(e)
             state.status = "failed"
-        
-        return state
+            return {
+                "messages": [
+                    SystemMessage(content=f"Error generating meal plan: {str(e)}")
+                ]
+            }
     
-    async def _optimize_plan_node(self, state: MealPlannerState) -> MealPlannerState:
-        """Node for optimizing meal plan (Act step - Optimize)."""
-        try:
-            if not state.current_plan or not state.current_plan.meals:
-                state.error = "No meal plan to optimize"
-                state.status = "failed"
-                return state
-            
-            # Calculate shopping list
-            shopping_list = {}
-            for recipes in state.current_plan.meals.values():
-                for recipe in recipes:
-                    for ingredient in recipe.ingredients:
-                        if ingredient.name in shopping_list:
-                            shopping_list[ingredient.name].quantity += ingredient.quantity
-                        else:
-                            shopping_list[ingredient.name] = ingredient.copy()
-            
-            state.current_plan.shopping_list = list(shopping_list.values())
-            
-            # Calculate total calories
-            total_calories = 0
-            for recipes in state.current_plan.meals.values():
-                for recipe in recipes:
-                    if recipe.calories_per_serving:
-                        total_calories += recipe.calories_per_serving * recipe.servings
-            
-            state.current_plan.total_calories = total_calories
-            state.step += 1
-            state.status = "plan_optimized"
-            
-        except Exception as e:
-            state.error = str(e)
-            state.status = "failed"
+    async def _validate_node(self, state: MealPlannerMessagesState, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate meal plan."""
+        if not state.meal_suggestions:
+            state.requires_validation = True
+            state.status = "needs_validation"
+            return {
+                "messages": [
+                    SystemMessage(content="No meal suggestions processed, requires validation")
+                ]
+            }
         
-        return state
-    
-    async def _validate_plan_node(self, state: MealPlannerState) -> MealPlannerState:
-        """Node for validating meal plan (Act step - Validate)."""
-        try:
-            if not state.current_plan or not state.current_plan.meals:
-                state.error = "No meal plan to validate"
-                state.status = "failed"
-                return state
-            
-            # Validate meal count per day
-            for date, recipes in state.current_plan.meals.items():
-                if len(recipes) < self.min_meals_per_day:
-                    state.metadata.setdefault("warnings", []).append(
-                        f"Not enough meals on {date}: {len(recipes)} meals"
-                    )
-                elif len(recipes) > self.max_meals_per_day:
-                    state.metadata.setdefault("warnings", []).append(
-                        f"Too many meals on {date}: {len(recipes)} meals"
-                    )
-            
-            state.step += 1
-            state.status = "completed"
-            
-        except Exception as e:
-            state.error = str(e)
-            state.status = "failed"
+        # Check confidence scores
+        low_confidence_meals = [
+            meal["name"]
+            for meals in state.meal_suggestions.values()
+            for meal in meals
+            if state.confidence_scores.get(meal["name"], 0) < self.confidence_threshold
+        ]
         
-        return state
+        if low_confidence_meals:
+            state.requires_validation = True
+            state.metadata["low_confidence_meals"] = low_confidence_meals
+            state.status = "needs_validation"
+            return {
+                "messages": [
+                    SystemMessage(content=f"Low confidence meals found: {', '.join(low_confidence_meals)}")
+                ]
+            }
+        
+        state.requires_validation = False
+        state.status = "completed"
+        return {
+            "messages": [
+                SystemMessage(content="All meal suggestions validated successfully")
+            ]
+        }
     
-    async def generate_meal_plan(
-        self,
-        available_ingredients: List[FoodItem],
-        start_date: datetime,
-        end_date: datetime,
-        dietary_restrictions: Optional[List[str]] = None,
-        preferences: Optional[Dict[str, Any]] = None
-    ) -> MealPlannerState:
+    def _needs_validation(self, state: MealPlannerMessagesState) -> bool:
+        """Determine if human validation is needed."""
+        return state.requires_validation
+    
+    async def generate_meal_plan(self, ingredients: List[Dict], preferences: Dict) -> Dict[str, Any]:
         """Generate a meal plan based on available ingredients and preferences."""
-        initial_state = MealPlannerState(
+        config = {
+            "configurable": {
+                "thread_id": datetime.now().isoformat()
+            }
+        }
+        
+        initial_state = MealPlannerMessagesState(
             agent_id="meal_planner",
-            available_ingredients=available_ingredients,
-            dietary_restrictions=dietary_restrictions or [],
-            preferences=preferences or {},
-            current_plan=MealPlan(
-                start_date=start_date,
-                end_date=end_date,
-                meals={},
-                shopping_list=[]
-            )
+            messages=[],
+            available_ingredients=ingredients,
+            preferences=preferences
         )
         
-        return await self.graph.arun(initial_state) 
+        return await self.graph.astream_events(
+            {"messages": initial_state.messages},
+            config,
+            version="v2"
+        ) 
